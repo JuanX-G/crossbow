@@ -1,0 +1,12 @@
+goos: linux
+goarch: amd64
+pkg: crossbow
+cpu: AMD Ryzen 5 PRO 6650U with Radeon Graphics     
+BenchmarkSend-12              	 2974249	       401.1 ns/op	     116 B/op	       2 allocs/op
+BenchmarkCall-12              	 1865653	       644.4 ns/op	     116 B/op	       2 allocs/op
+BenchmarkParallelSend-12      	 2936491	       412.9 ns/op	     116 B/op	       2 allocs/op
+BenchmarkParallelCall-12      	 1692177	       739.6 ns/op	     116 B/op	       2 allocs/op
+BenchmarkSendToParallel-12    	 4080534	       290.5 ns/op	     195 B/op	       2 allocs/op
+BenchmarkCallToParallel-12    	 1842810	       647.2 ns/op	     116 B/op	       2 allocs/op
+PASS
+ok  	crossbow	8.376s
