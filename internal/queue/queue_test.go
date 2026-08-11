@@ -1,3 +1,6 @@
+/* Crossbow, a simple go library for actor-like worker-pools with inboxes supporting parallel and synchronous processing.
+ * Copyright (C) 2026 Maciej "juan_em" Woźniak, full license found in the LICENSE file
+ */
 package queue
 
 import (
@@ -6,9 +9,10 @@ import (
 )
 
 func TestPushPop(t *testing.T) {
+	ctx := t.Context()
 	q := NewQueue(2, 4, BlockPolicy[int]{})
-	q.Push(1)
-	q.Push(2)
+	q.Push(ctx, 1)
+	q.Push(ctx, 2)
 
 	v, ok := q.Pop()
 	if !ok {
@@ -20,8 +24,9 @@ func TestPushPop(t *testing.T) {
 }
 
 func TestNotify(t *testing.T) {
+	ctx := t.Context()
 	q := NewQueue(2, 6, BlockPolicy[int]{})
-	q.Push(42)
+	q.Push(ctx, 42)
 	select {
 	case <-q.Notify():
 	default:
@@ -30,8 +35,9 @@ func TestNotify(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	q := NewQueue(2, 6, BlockPolicy[int]{})
-	q.Push(42)
+	ctx := t.Context()
+	q := NewQueue[int](2, 6, BlockPolicy[int]{})
+	q.Push(ctx, 42)
 	<-q.Notify()
 	q.Close()
 	_, ok := <-q.Notify()
@@ -44,12 +50,13 @@ func TestClose(t *testing.T) {
 }
 
 func TestBlockPolicy(t *testing.T) {
+	ctx := t.Context()
 	q := NewQueue(2, 2, BlockPolicy[int]{})
-	q.Push(1)
-	q.Push(2)
+	q.Push(ctx, 1)
+	q.Push(ctx, 2)
 	doneCh := make(chan struct{})
 	pushFn := func() {
-		q.Push(3)
+		q.Push(ctx, 3)
 		doneCh <- struct{}{}
 	}
 	go pushFn()
@@ -80,10 +87,11 @@ func TestPolicies(t *testing.T) {
 		DropNewestPolicy[int]{}: policyTest{input: []int{1, 2, 3}, endState: []int{1, 2}},
 		DropOldestPolicy[int]{}: policyTest{input: []int{1, 2, 3}, endState: []int{2, 3}},
 	}
+	ctx := t.Context()
 	for policy, test := range tests {
 		q := NewQueue(2, 2, policy)
 		for _, v := range test.input {
-			q.Push(v)
+			q.Push(ctx, v)
 		}
 		for _, vs := range test.endState {
 			if vp, _ := q.Pop(); vp != vs {

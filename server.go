@@ -44,7 +44,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 		return nil, err
 	}
 	return &Server[T, M, O]{
-		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), makePolicy[ContextMessage[M, O]](cfg.MailboxPolicy)),
+		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), makePolicy[ContextMessage[M, O]](cfg.Policy)),
 		handler:           handler,
 		sem:               make(chan struct{}, cfg.Workers),
 		recover:           recover,

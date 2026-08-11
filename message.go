@@ -12,7 +12,7 @@ import (
 // and general context such as.
 type ContextMessage[M any, O any] struct {
 	Value M // The message being sent to the handler
-	res   chan Response[O]
+	reply chan Response[O]
 
 	Context   context.Context // Context to be passed to handlers
 	Timestamp time.Time       // Timestamp,  populated automatically if makeTimestamp is true
@@ -20,9 +20,9 @@ type ContextMessage[M any, O any] struct {
 
 func newContextMessage[M any, O any](ctx context.Context, value M, resCh chan Response[O], makeTimestamp bool) ContextMessage[M, O] {
 	if makeTimestamp {
-		return ContextMessage[M, O]{Value: value, Timestamp: time.Now(), Context: ctx, res: resCh}
+		return ContextMessage[M, O]{Value: value, Timestamp: time.Now(), Context: ctx, reply: resCh}
 	} else {
-		return ContextMessage[M, O]{Value: value, Context: ctx, res: resCh}
+		return ContextMessage[M, O]{Value: value, Context: ctx, reply: resCh}
 	}
 }
 

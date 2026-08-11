@@ -1,6 +1,10 @@
+/* Crossbow, a simple go library for actor-like worker-pools with inboxes supporting parallel and synchronous processing.
+ * Copyright (C) 2026 Maciej "juan_em" Woźniak, full license found in the LICENSE file
+ */
 package queue
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -14,16 +18,16 @@ var (
 )
 
 type MailboxPolicy[T any] interface {
-	Enqueue(*Queue[T], T) error
+	Enqueue(context.Context, *Queue[T], T) error
 }
 
 type Queue[T any] struct {
-	mu      sync.Mutex
-	notFull *sync.Cond
+	mu sync.Mutex
 
-	ring   *ring.RingBuffer[T]
-	notify chan struct{}
-	closed bool
+	ring      *ring.RingBuffer[T]
+	notify    chan struct{}
+	notFullCh chan struct{} // closed and replaced any time space might have freed up; lets waiters select on it alongside ctx.Done()
+	closed    bool
 
 	policy MailboxPolicy[T]
 }
@@ -33,16 +37,39 @@ func NewQueue[T any](initialCap int, maxCap int, policy MailboxPolicy[T]) *Queue
 		initialCap = 2
 	}
 	q := &Queue[T]{
-		ring:   ring.NewRingBuffer[T](initialCap, maxCap),
-		notify: make(chan struct{}, 1),
-		policy: policy,
+		ring:      ring.NewRingBuffer[T](initialCap, maxCap),
+		notify:    make(chan struct{}, 1),
+		notFullCh: make(chan struct{}),
+		policy:    policy,
 	}
 
-	q.notFull = sync.NewCond(&q.mu)
 	return q
 }
 
-func (q *Queue[T]) Push(item T) error {
+// waitForSpace blocks until either space might be available (notFullCh fires),
+// the queue closes, or ctx is done. Must be called
+// with q.mu held; it releases the lock while waiting and reacquires it before
+// returning, so callers can safely re-check state afterwards.
+func (q *Queue[T]) waitForSpace(ctx context.Context) error {
+	ch := q.notFullCh
+	q.mu.Unlock()
+	defer q.mu.Lock()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+		return nil
+	}
+}
+
+// wakeWaiters releases anything blocked in waitForSpace. Must be called with q.mu held.
+func (q *Queue[T]) wakeWaiters() {
+	close(q.notFullCh)
+	q.notFullCh = make(chan struct{})
+}
+
+func (q *Queue[T]) Push(ctx context.Context, item T) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -50,11 +77,15 @@ func (q *Queue[T]) Push(item T) error {
 		return ErrClosed
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if q.policy == nil {
 		return ErrFull
 	}
 
-	return q.policy.Enqueue(q, item)
+	return q.policy.Enqueue(ctx, q, item)
 }
 
 func (q *Queue[T]) Pop() (T, bool) {
@@ -66,7 +97,7 @@ func (q *Queue[T]) Pop() (T, bool) {
 		return item, false
 	}
 
-	q.notFull.Signal()
+	q.wakeWaiters()
 	return item, true
 }
 
@@ -89,7 +120,7 @@ func (q *Queue[T]) Close() {
 	}
 
 	q.closed = true
-	q.notFull.Broadcast()
+	q.wakeWaiters()
 	close(q.notify)
 }
 

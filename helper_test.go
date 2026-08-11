@@ -114,3 +114,16 @@ func setUpHangerServer(t *testing.T, ctx context.Context, testing bool, threads 
 	go srv.Run(ctx)
 	return srv
 }
+
+type Panicker struct{}
+
+func (Panicker) Handle(msg ContextMessage[int, string]) (string, error) {
+	panic("")
+}
+
+func (Panicker) Init() error {
+	return nil
+}
+
+func (Panicker) Terminate(err error) {
+}

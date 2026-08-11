@@ -41,10 +41,11 @@ func makePolicy[T any](mp MailboxPolicy) queue.MailboxPolicy[T] {
 
 // ServerConfig provides a recovery function settings for a server and facilitates easy validation
 type ServerConfig struct {
-	Workers            uint // The amount of workers to run the handler over, 1 for standard FIFO ordering
-	MailboxSize        uint // Maximum size of a the servers mailbox, must be greater than 0
-	MailboxPolicy           // MailboxPolicy according to [MailboxPolicy]
-	GenerateTimestamps bool // Switch for autogeneration of timestamps for the Timestamp field on ContextMessage [ContextMessage]
+	Workers            uint          // The amount of workers to run the handler over, 1 for standard FIFO ordering
+	MailboxSize        uint          // Maximum size of a the servers mailbox, must be greater than 0
+	Policy             MailboxPolicy // MailboxPolicy according to [MailboxPolicy]
+	GenerateTimestamps bool          // Switch for autogeneration of timestamps for the Timestamp field on ContextMessage [ContextMessage]
+	Unbounded          bool
 }
 
 type RecoverFn[T ServerHandler[M, O], M any, O any] = func(ContextMessage[M, O], T, error, []byte) error // function called when the handler panics, if it returns an erros the server terminates
@@ -69,7 +70,7 @@ func MakeDefaultServerConfig(workers ...uint) ServerConfig {
 	return ServerConfig{
 		Workers:            workerCount,
 		MailboxSize:        4 + workerCount*4,
-		MailboxPolicy:      PolicyBlock,
+		Policy:             PolicyBlock,
 		GenerateTimestamps: false,
 	}
 }
@@ -80,7 +81,7 @@ func (s *ServerConfig) Validate() error {
 	if s.Workers == 0 {
 		return ServerConfigError{ErrType: ConfigErrorWorkersZero}
 	}
-	if s.MailboxSize == 0 {
+	if s.MailboxSize == 0 && !s.Unbounded {
 		return ServerConfigError{ErrType: ConfigErrorMailboxSizeZero}
 	}
 	return nil

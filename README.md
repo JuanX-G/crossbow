@@ -56,7 +56,7 @@ func (e *Foo) Terminate(err error) {
 func main() {
     handler := &Foo{}
     cfg := MakeDefaultServerConfig(1) // one worker for sequential processing
-    srv, _ := NewServer[*Foo, int, int](handler, cfg)
+    srv, _ := NewServer[*Foo, int, int](handler, cfg, DefaultPanicRecover)
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()

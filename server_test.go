@@ -86,3 +86,25 @@ func TestServerShutdownReturnsTerminated(t *testing.T) {
 		t.Fatalf("Server context canceled, should have reported error 'ErrServerTerminated' when trying to send data, found %#v", err)
 	}
 }
+
+func TestServerPanicRecovery(t *testing.T) {
+	handler := &Panicker{}
+
+	cfg := MakeDefaultServerConfig()
+	panicErr := errors.New("panicked")
+	panicHandler := func(msg ContextMessage[int, string], h *Panicker, err error, s []byte) error {
+		return panicErr
+	}
+	srv, err := NewServer(handler, cfg, panicHandler)
+	if err != nil {
+		t.Fatalf("server initialization failed")
+	}
+	go srv.Run(context.Background())
+	_, err = srv.Call(context.Background(), 21)
+	if err == nil {
+		t.Fatalf("handler panicked, and recovery returned an error, but err == nil was returned")
+	}
+	if !srv.Terminated() {
+		t.Fatalf("handler panicked, and recovery returned an error, but server reports terminated == false")
+	}
+}

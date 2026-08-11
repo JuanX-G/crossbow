@@ -13,7 +13,7 @@ func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
 	if s.terminated.Load() {
 		return ErrServerTerminated
 	}
-	if err := s.queue.Push(msg); err != nil {
+	if err := s.queue.Push(msg.Context, msg); err != nil {
 		return err
 	}
 	return nil
@@ -32,20 +32,21 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 			if r := recover(); r != nil {
 				panicked = true
 				s.stats.AddPanic()
-				panicErr := fmt.Errorf("%v", r)
+				panicErr := fmt.Errorf("Panicked: %v", r)
+				err = panicErr
 				if recErr := s.recover(msg, s.handler, panicErr, debug.Stack()); recErr != nil {
 					s.shutdown(recErr)
 				}
 			}
 
-			if msg.res != nil {
+			if msg.reply != nil {
 				if panicked {
-					msg.res <- Response[O]{Value: zero, Err: err}
+					msg.reply <- Response[O]{Value: zero, Err: err}
 				} else {
 					if err != nil {
 						s.stats.AddFail()
 					}
-					msg.res <- Response[O]{Value: output, Err: err}
+					msg.reply <- Response[O]{Value: output, Err: err}
 				}
 			}
 		}()
@@ -94,8 +95,8 @@ func (s *Server[T, M, O]) drainRemaining() {
 		if !ok {
 			break
 		}
-		if msg.res != nil {
-			msg.res <- Response[O]{Value: zero, Err: ErrServerTerminated}
+		if msg.reply != nil {
+			msg.reply <- Response[O]{Value: zero, Err: ErrServerTerminated}
 		}
 	}
 }

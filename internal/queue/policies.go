@@ -1,8 +1,13 @@
+/* Crossbow, a simple go library for actor-like worker-pools with inboxes supporting parallel and synchronous processing.
+ * Copyright (C) 2026 Maciej "juan_em" Woźniak, full license found in the LICENSE file
+ */
 package queue
+
+import "context"
 
 type BlockPolicy[T any] struct{}
 
-func (BlockPolicy[T]) Enqueue(q *Queue[T], item T) error {
+func (BlockPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
 	for {
 		if q.closed {
 			return ErrClosed
@@ -13,13 +18,15 @@ func (BlockPolicy[T]) Enqueue(q *Queue[T], item T) error {
 			return nil
 		}
 
-		q.notFull.Wait()
+		if err := q.waitForSpace(ctx); err != nil {
+			return err
+		}
 	}
 }
 
 type DropNewestPolicy[T any] struct{}
 
-func (DropNewestPolicy[T]) Enqueue(q *Queue[T], item T) error {
+func (DropNewestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
 	if q.closed {
 		return ErrClosed
 	}
@@ -35,7 +42,7 @@ func (DropNewestPolicy[T]) Enqueue(q *Queue[T], item T) error {
 
 type DropOldestPolicy[T any] struct{}
 
-func (DropOldestPolicy[T]) Enqueue(q *Queue[T], item T) error {
+func (DropOldestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
 	if q.closed {
 		return ErrClosed
 	}
@@ -57,7 +64,7 @@ func (DropOldestPolicy[T]) Enqueue(q *Queue[T], item T) error {
 
 type UnboundedPolicy[T any] struct{}
 
-func (UnboundedPolicy[T]) Enqueue(q *Queue[T], item T) error {
+func (UnboundedPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
 	if q.closed {
 		return ErrClosed
 	}
