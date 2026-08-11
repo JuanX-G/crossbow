@@ -7,6 +7,7 @@ import (
 	"crossbow/internal/queue"
 	"sync"
 	"sync/atomic"
+	"context"
 )
 
 // Server is the central object for crossbow. It represents a handler with a inbox attached. The handler processes messages from the inbox in a FIFO manner by default.
@@ -17,11 +18,12 @@ import (
 type Server[T ServerHandler[M, O], M any, O any] struct {
 	queue             *queue.Queue[ContextMessage[M, O]]
 	handler           T
-	sem               chan struct{}
+	workers 		  uint
 	wg                sync.WaitGroup
 	terminated        atomic.Bool
 	stats             serverStats
 	generateTimestamp bool
+	replyPool 		  sync.Pool
 	recover           func(ContextMessage[M, O], T, error, []byte) error
 }
 
@@ -43,11 +45,44 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 	if err := handler.Init(); err != nil {
 		return nil, err
 	}
-	return &Server[T, M, O]{
+
+	srv := &Server[T, M, O]{
 		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), makePolicy[ContextMessage[M, O]](cfg.Policy)),
 		handler:           handler,
-		sem:               make(chan struct{}, cfg.Workers),
+		workers: 		   cfg.Workers,
 		recover:           recover,
 		generateTimestamp: cfg.GenerateTimestamps,
-	}, nil
+	}
+	srv.replyPool = sync.Pool{
+		New: func() any {
+			return make(chan Response[O], 1)
+		},
+	}
+	return srv, nil
 }
+
+func (s *Server[T, M, O]) worker(ctx context.Context) {
+	defer s.wg.Done()
+
+	for {
+		if s.terminated.Load() {
+			return
+		}
+
+		msg, ok := s.queue.Pop()
+		if !ok {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-s.queue.Notify():
+				if !ok || s.terminated.Load() {
+					return
+				}
+				continue
+			}
+		}
+
+		s.dispatch(msg)
+	}
+}
+

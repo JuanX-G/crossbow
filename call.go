@@ -12,18 +12,18 @@ import (
 // It returns a context error upon cancelation of ctx. An error is returned if creating a new
 // ContextMessage fail. An error is also returned if enqueueing
 // the message fails. If nil is returned that means that the message was successfully enqueued
-func (s *Server[T, M, O]) Send(ctx context.Context, msg M) error {
+func (s *Server[T, M, O]) Send(ctx context.Context, req M) error {
 	if s.terminated.Load() {
 		return ErrServerTerminated
 	}
 
-	contextMsg := newContextMessage[M, O](ctx, msg, nil, s.generateTimestamp)
+	msg := newContextMessage[M, O](ctx, req, nil, s.generateTimestamp)
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		if err := s.enqueue(contextMsg); err != nil {
+		if err := s.enqueue(msg); err != nil {
 			return fmt.Errorf("queue error: %w", err)
 		}
 	}
@@ -41,10 +41,11 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 		return zero, ErrServerTerminated
 	}
 
-	resCh := make(chan Response[O], 1)
+	resCh := s.replyPool.Get().(chan Response[O])
 	msg := newContextMessage(ctx, req, resCh, s.generateTimestamp)
 
 	if err := s.enqueue(msg); err != nil {
+		s.replyPool.Put(resCh)
 		return zero, fmt.Errorf("queue error: %w", err)
 	}
 
@@ -52,6 +53,7 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 	case <-ctx.Done():
 		return zero, ctx.Err()
 	case res := <-resCh:
+		s.replyPool.Put(resCh)
 		return res.Value, res.Err
 	}
 }

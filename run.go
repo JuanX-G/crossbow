@@ -20,44 +20,37 @@ func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
 }
 
 func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
-	s.sem <- struct{}{}
-	s.wg.Go(func() {
-		defer func() { <-s.sem }()
-		var zero O
-		var output O
-		var err error
-		var panicked bool
+	var zero O
+	var output O
+	var err error
+	var panicked bool
 
-		defer func() {
-			if r := recover(); r != nil {
-				panicked = true
-				s.stats.AddPanic()
-				panicErr := fmt.Errorf("Panicked: %v", r)
-				err = panicErr
-				if recErr := s.recover(msg, s.handler, panicErr, debug.Stack()); recErr != nil {
-					s.shutdown(recErr)
-				}
+	defer func() {
+		if r := recover(); r != nil {
+			panicked = true
+			s.stats.AddPanic()
+			panicErr := fmt.Errorf("Panicked: %v", r)
+			err = panicErr
+			if recErr := s.recover(msg, s.handler, panicErr, debug.Stack()); recErr != nil {
+				s.shutdown(recErr)
 			}
-
-			if msg.reply != nil {
-				if panicked {
-					msg.reply <- Response[O]{Value: zero, Err: err}
-				} else {
-					if err != nil {
-						s.stats.AddFail()
-					}
-					msg.reply <- Response[O]{Value: output, Err: err}
-				}
-			}
-		}()
-
-		if s.terminated.Load() {
-			err = ErrServerTerminated
-			return
 		}
 
+		if msg.reply != nil {
+			if panicked {
+				msg.reply <- Response[O]{Value: zero, Err: err}
+			} else {
+				if err != nil {
+					s.stats.AddFail()
+				}
+				msg.reply <- Response[O]{Value: output, Err: err}
+			}
+		}
+	}()
+
+	if !s.terminated.Load() {
 		output, err = s.handler.Handle(msg)
-	})
+	}
 }
 
 func (s *Server[T, M, O]) shutdown(reason error) {
@@ -113,6 +106,12 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 		s.drainRemaining()
 		s.wg.Wait()
 	}()
+
+	workerCount := int(s.workers)
+	for range workerCount {
+		s.wg.Add(1)
+		go s.worker(ctx)
+	}
 
 	for {
 		select {
