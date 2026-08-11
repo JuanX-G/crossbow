@@ -7,6 +7,9 @@ and classic FIFO processing as default.
 Crossbow makes heavy use of generics to keep whole thing type safe. It is kept lean and lightweight on purpose.
 That is why it lacks a central registry, managers or process trees. 
 
+## Why Crossbow
+tK.
+
 ## Versioning
 Crossbow is intended to strcitly follow SemVer from version v0.1 onwards. Releases marked 
 as v0-alpha.x.y or v0-beta.x.y do not make any compatibility guarantees.
@@ -32,21 +35,19 @@ func (e *Foo) Handle(msg ContextMessage[int, int]) (int, error) {
         fmt.Println("21:37")
         e.x = 0
         return 0, nil
-    } else if msg.ID != "" { // ContextMessage carries related data for use by the handler (see message.go for details)
-        return 0, fmt.Errorf("message cannot have an ID!") // This error will be passed on to anyone using the synchronous Call() method
     } else {
         e.x = msg.Value // Update internal state. Safe if the thread count is 1
         return msg.Value, nil
     }
 }
 
-// Simple init stub. Usually used to initialize connection and validate fields
-func (e EchoSend) Init() error {
+// Simple init stub. Usually used to initialize connections and validate fields
+func (e *Foo) Init() error {
 	return nil
 }
 
 // Handles the closing of connections etc.
-func (e EchoSend) Terminate(err error) {
+func (e *Foo) Terminate(err error) {
     if e.x == 42 {
         fmt.Println("Ah! 42")
     }
@@ -54,8 +55,8 @@ func (e EchoSend) Terminate(err error) {
 
 func main() {
     handler := &Foo{}
-    cfg := MakeDefaultServerConfig[*Foo](1) // one thread for sequential processing
-    srv, _ := NewServer(handler, cfg)
+    cfg := MakeDefaultServerConfig(1) // one worker for sequential processing
+    srv, _ := NewServer[*Foo, int, int](handler, cfg)
 
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
