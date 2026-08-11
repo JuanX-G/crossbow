@@ -4,17 +4,17 @@
 package crossbow
 
 import (
-	"testing"
 	"context"
-	"strconv"
 	"fmt"
+	"strconv"
+	"testing"
 )
 
 // Example of a simple stateless handler.
 type Echo struct{}
 
 func (Echo) Handle(msg ContextMessage[int, string]) (string, error) {
-    return strconv.Itoa(msg.Value), nil
+	return strconv.Itoa(msg.Value), nil
 }
 
 func (Echo) Init() error {
@@ -31,20 +31,21 @@ func (Echo) Terminate(err error) {
 // The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
 func setUpEchoServer(t *testing.T, ctx context.Context, testing bool, threads ...uint) *Server[Echo, int, string] {
 	handler := Echo{}
-	cfg := MakeDefaultServerConfig[Echo](threads...)
+	cfg := MakeDefaultServerConfig(threads...)
 
-	srv, err := NewServer(handler, cfg)
+	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
 	if err != nil && testing {
 		t.Fatalf("Error %s at server initialization", err)
 	} else if err != nil {
 		panic(fmt.Sprintf("Error %s at server initialization", err))
 	}
 	go srv.Run(ctx)
+
 	return srv
 }
 
 // Simple stateful handler that send back data through the provided channel
-type EchoSend struct{
+type EchoSend struct {
 	BackCh chan string
 }
 
@@ -65,11 +66,11 @@ func (e EchoSend) Terminate(err error) {
 }
 
 // See [setUpEchoServer].
-func setUpEchoSendServer(t *testing.T, ctx context.Context, testing bool, resCh chan string, threads ...uint) (*Server[*EchoSend, int, string]) {
+func setUpEchoSendServer(t *testing.T, ctx context.Context, testing bool, resCh chan string, threads ...uint) *Server[*EchoSend, int, string] {
 	handler := &EchoSend{BackCh: resCh}
-	cfg := MakeDefaultServerConfig[*EchoSend](threads...)
+	cfg := MakeDefaultServerConfig(threads...)
 
-	srv, err := NewServer(handler, cfg)
+	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
 	if err != nil && testing {
 		t.Fatalf("Error %s at server initialization", err)
 	} else if err != nil {
@@ -78,7 +79,6 @@ func setUpEchoSendServer(t *testing.T, ctx context.Context, testing bool, resCh 
 	go srv.Run(ctx)
 	return srv
 }
-
 
 // Example of a handler that hangs on the first message it recives
 type Hanger struct{}
@@ -103,9 +103,9 @@ func (Hanger) Terminate(err error) {
 // The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
 func setUpHangerServer(t *testing.T, ctx context.Context, testing bool, threads ...uint) *Server[Hanger, int, string] {
 	handler := Hanger{}
-	cfg := MakeDefaultServerConfig[Hanger](threads...)
+	cfg := MakeDefaultServerConfig(threads...)
 
-	srv, err := NewServer(handler, cfg)
+	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
 	if err != nil && testing {
 		t.Fatalf("Error %s at server initialization", err)
 	} else if err != nil {

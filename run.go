@@ -4,8 +4,8 @@
 package crossbow
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"runtime/debug"
 )
 
@@ -99,7 +99,6 @@ func (s *Server[T, M, O]) drainRemaining() {
 		}
 	}
 }
-
 
 // # Public API for Server
 

@@ -4,12 +4,12 @@
 package crossbow
 
 import (
-	"testing"
 	"context"
+	"testing"
 )
 
 func BenchmarkSend(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false)
 	for b.Loop() {
@@ -18,7 +18,7 @@ func BenchmarkSend(b *testing.B) {
 }
 
 func BenchmarkCall(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false)
 	for b.Loop() {
@@ -26,10 +26,9 @@ func BenchmarkCall(b *testing.B) {
 	}
 }
 
-
 // Benchmarking sending from multiple goroutines
 func BenchmarkParallelSend(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false)
 	b.RunParallel(func(pb *testing.PB) {
@@ -40,7 +39,7 @@ func BenchmarkParallelSend(b *testing.B) {
 }
 
 func BenchmarkParallelCall(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false)
 
@@ -55,7 +54,7 @@ const SERVICING_ROUTINES = 4 // Goroutines the parallel handler should be ran on
 
 // Benchmarking sending to handler that runs in parallel
 func BenchmarkSendToParallel(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false, SERVICING_ROUTINES)
 	for b.Loop() {
@@ -64,7 +63,7 @@ func BenchmarkSendToParallel(b *testing.B) {
 }
 
 func BenchmarkCallToParallel(b *testing.B) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	srv := setUpEchoServer(nil, ctx, false, SERVICING_ROUTINES)
 	for b.Loop() {

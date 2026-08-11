@@ -9,9 +9,8 @@ import (
 	"testing"
 )
 
-
 func TestCallServer(t *testing.T) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := setUpEchoServer(t, ctx, true)
 	defer cancel()
 
@@ -29,13 +28,13 @@ func TestCallServer(t *testing.T) {
 }
 
 func TestSendServer(t *testing.T) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	resCh := make(chan string)
 	srv := setUpEchoSendServer(t, ctx, true, resCh)
 	defer cancel()
 
 	err := srv.Send(ctx, 42)
-	if res := <- resCh; res != "42" {
+	if res := <-resCh; res != "42" {
 		t.Fatalf("Wrong value returned from Sending to Echo; expected: 42; found: %s", res)
 	}
 	if err != nil {
@@ -55,19 +54,17 @@ func TestHandlerInitFails(t *testing.T) {
 		t.Fatalf("Handler behaviour invalid, should have returned an error when given a nil channel.")
 	}
 
-	cfg := MakeDefaultServerConfig[*EchoSend]()
-	_, err = NewServer(handler, cfg)
+	cfg := MakeDefaultServerConfig()
+	_, err = NewServer(handler, cfg, DefaultPanicRecover)
 	if err == nil {
 		t.Fatalf("Server passed initialization, even though it should have stopped because handler.Init() returned an error")
 	}
 }
 
-
 func TestServerShutdown(t *testing.T) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := setUpEchoServer(t, ctx, true)
 
-	go srv.Run(ctx)
 	cancel()
 	err := srv.Send(ctx, -42)
 	if err == nil {
@@ -76,13 +73,12 @@ func TestServerShutdown(t *testing.T) {
 }
 
 func TestServerShutdownReturnsTerminated(t *testing.T) {
-    ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := setUpHangerServer(t, ctx, true)
 
-	go srv.Run(ctx)
-	err := srv.Send(context.Background(), 42)
+	srv.Send(context.Background(), 42)
 	cancel()
-	_, err = srv.Call(context.Background(), 42)
+	_, err := srv.Call(context.Background(), 42)
 	if err == nil {
 		t.Fatalf("Server context canceled, should have errored to a message waiting in the queue")
 	}

@@ -35,7 +35,7 @@ func (e *Foo) Handle(msg ContextMessage[int, int]) (int, error) {
     } else if msg.ID != "" { // ContextMessage carries related data for use by the handler (see message.go for details)
         return 0, fmt.Errorf("message cannot have an ID!") // This error will be passed on to anyone using the synchronous Call() method
     } else {
-        e.x = msg.Value // Update internal state. Safe if the thread count is 0
+        e.x = msg.Value // Update internal state. Safe if the thread count is 1
         return msg.Value, nil
     }
 }
@@ -54,7 +54,7 @@ func (e EchoSend) Terminate(err error) {
 
 func main() {
     handler := &Foo{}
-    cfg := MakeDefaultServerConfig[*Foo](1)
+    cfg := MakeDefaultServerConfig[*Foo](1) // one thread for sequential processing
     srv, _ := NewServer(handler, cfg)
 
     ctx, cancel := context.WithCancel(context.Background())

@@ -29,3 +29,8 @@ Compiles the tests bianry with goleak and runs each test separately outputing th
 go test -bench=.
 ```
 Runs all benchmarks
+
+```Bash
+go generate .
+```
+Runs all code generation. Use before any commits. Make sure to rerun after modyfying any enums that have '//go:generate (...)' above their type declaration.

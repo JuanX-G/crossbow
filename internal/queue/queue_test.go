@@ -19,14 +19,38 @@ func TestPushPop(t *testing.T) {
 	}
 }
 
+func TestNotify(t *testing.T) {
+	q := NewQueue(2, 6, BlockPolicy[int]{})
+	q.Push(42)
+	select {
+	case <-q.Notify():
+	default:
+		t.Fatalf("pushed to queue but did not recive a notification")
+	}
+}
+
+func TestClose(t *testing.T) {
+	q := NewQueue(2, 6, BlockPolicy[int]{})
+	q.Push(42)
+	<-q.Notify()
+	q.Close()
+	_, ok := <-q.Notify()
+	if ok {
+		t.Fatalf("called close on queue but the notification channel remained open even after draining it")
+	}
+	if !q.IsClosed() {
+		t.Fatalf("called close on queue but IsClosed() returned 'false'")
+	}
+}
+
 func TestBlockPolicy(t *testing.T) {
 	q := NewQueue(2, 2, BlockPolicy[int]{})
 	q.Push(1)
 	q.Push(2)
 	doneCh := make(chan struct{})
-	pushFn := func () {
+	pushFn := func() {
 		q.Push(3)
-		doneCh <- struct {}{}
+		doneCh <- struct{}{}
 	}
 	go pushFn()
 
@@ -36,7 +60,6 @@ func TestBlockPolicy(t *testing.T) {
 	default:
 	}
 
-	time.Sleep(time.Millisecond * 150)
 	q.Pop()
 	time.Sleep(time.Millisecond * 25)
 	select {
@@ -48,7 +71,7 @@ func TestBlockPolicy(t *testing.T) {
 }
 
 type policyTest struct {
-	input []int
+	input    []int
 	endState []int
 }
 

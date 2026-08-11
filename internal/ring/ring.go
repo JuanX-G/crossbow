@@ -1,8 +1,7 @@
 package ring
 
-
 type RingBuffer[T any] struct {
-	cap int
+	cap   int
 	buf   []T
 	head  int
 	tail  int
@@ -23,8 +22,8 @@ func (r *RingBuffer[T]) Push(item T) bool {
 	if r.count == len(r.buf) {
 		newSize := len(r.buf) * 2
 		if newSize > r.cap && r.cap != 0 && r.cap != len(r.buf) {
-				deltaSize := r.cap - len(r.buf)
-				r.resize(len(r.buf) + deltaSize)
+			deltaSize := r.cap - len(r.buf)
+			r.resize(len(r.buf) + deltaSize)
 		} else if newSize > r.cap && r.cap != 0 {
 			return false
 		} else {

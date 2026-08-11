@@ -8,13 +8,13 @@ import (
 )
 
 type StatsSnapshot struct {
-    Failures uint64
-    Panics uint64
+	Failures uint64
+	Panics   uint64
 }
 
 type serverStats struct {
 	failures atomic.Uint64
-	panics atomic.Uint64
+	panics   atomic.Uint64
 }
 
 func (s *serverStats) AddFail() {

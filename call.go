@@ -8,22 +8,23 @@ import (
 	"fmt"
 )
 
-
 // Send is the basic method for signaling to the handler, it does not block waiting for a response.
 // It returns a context error upon cancelation of ctx. An error is returned if creating a new
-// ContextMessage fail (namely the uuid generation failing). An error is also returned if enqueueing
+// ContextMessage fail. An error is also returned if enqueueing
 // the message fails. If nil is returned that means that the message was successfully enqueued
 func (s *Server[T, M, O]) Send(ctx context.Context, msg M) error {
-	contextMsg, err := newContextMessage[M, O](ctx, msg, nil, s.generateUUIDs)
-	if err != nil {
-		return err
+	if s.terminated.Load() {
+		return ErrServerTerminated
 	}
+
+	contextMsg := newContextMessage[M, O](ctx, msg, nil, s.generateTimestamp)
+
 	select {
-	case <- ctx.Done():
+	case <-ctx.Done():
 		return ctx.Err()
 	default:
 		if err := s.enqueue(contextMsg); err != nil {
-			return fmt.Errorf("failed to enqueue")
+			return fmt.Errorf("queue error: %w", err)
 		}
 	}
 	return nil
@@ -32,29 +33,27 @@ func (s *Server[T, M, O]) Send(ctx context.Context, msg M) error {
 // Call is the basic method for talking to the handler, it blocks until the handler
 // returns a response.
 // It returns a context error upon cancelation of ctx. An error is returned if creating a new
-// ContextMessage fail (namely the uuid generation failing). An error is also returned if enqueueing
+// ContextMessage fail. An error is also returned if enqueueing
 // the message fails. If nil is returned that means that the message was successfully enqueued
 func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 	var zero O
 	if s.terminated.Load() {
 		return zero, ErrServerTerminated
 	}
-    resCh := make(chan Response[O], 1)
-	msg, err := newContextMessage(ctx, req, resCh, s.generateUUIDs)
-	if err != nil {
-		return zero, err
+
+	resCh := make(chan Response[O], 1)
+	msg := newContextMessage(ctx, req, resCh, s.generateTimestamp)
+
+	if err := s.enqueue(msg); err != nil {
+		return zero, fmt.Errorf("queue error: %w", err)
 	}
 
-    if err := s.enqueue(msg); err != nil  {
-		return zero, err
+	select {
+	case <-ctx.Done():
+		return zero, ctx.Err()
+	case res := <-resCh:
+		return res.Value, res.Err
 	}
-
-    select {
-    case <-ctx.Done():
-        return zero, ctx.Err()
-    case res := <-resCh:
-        return res.Value, res.Err
-    }
 }
 
 // Terminated reports whether the server has terminated.
