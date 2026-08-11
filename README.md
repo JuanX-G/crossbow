@@ -7,8 +7,23 @@ and classic FIFO processing as default.
 Crossbow makes heavy use of generics to keep whole thing type safe. It is kept lean and lightweight on purpose.
 That is why it lacks a central registry, managers or process trees. 
 
+## Toolchain
+Go 1.25 or later is required. The 'go.uber.org/goleak' package is used for tests built
+with `-tags=leaktest`, it is encouraged to run such test after making changes to the code base.
+This module requires 'go.uber.org/goleak' but, it is not neccesary for the library functions.
+
 ## Why Crossbow
-tK.
+Crossbow offers actor-like stage managment in a lightweight and type-safe fashion;
+while at the same time extending it with an optional worker pool.
+
+Crossbow offer configurable panic recovery that lets your provide your own handler
+to inspect the mssage causing the panic and the state of the handler.
+
+Included with the library is sensible set of mailbox backpressure policies, though
+by providing a simple interface you can write your own backpressure handlers.
+
+Crossbow allows you to limit the scope of every operation to an appropriate handler,
+making your code for modular and safer.
 
 ## Versioning
 Crossbow is intended to strcitly follow SemVer from version v0.1 onwards. Releases marked 
@@ -19,8 +34,8 @@ maintained for two version of the Go language.
 ## Usage
 All examples can be found in ./examples
 
-To use Crossbow you need to defined a handler that implements the ServerHandler[M any, O any] interface. 
-Mainly you need to have a Handle(ContextMessage[M, O]) method, this is the handling loop of your server;
+To use Crossbow you need to define a handler that implements the ServerHandler[M any, O any] interface. 
+Most importantly you need to have a Handle(ContextMessage[M, O]) method, this is the handling loop of your server;
 any data sent ot it is popped from the inbox and passed to it.
 ```go
 (...)
