@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // Example of a simple stateless handler.
@@ -29,15 +31,13 @@ func (Echo) Terminate(err error) {
 // If testing = false the function panics on sever intialization error.
 // The function runs the server for you in a goroutine.
 // The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
-func setUpEchoServer(t *testing.T, ctx context.Context, testing bool, threads ...uint) *Server[Echo, int, string] {
+func setUpEchoServer(t testing.TB, ctx context.Context, threads ...uint) *Server[Echo, int, string] {
 	handler := Echo{}
 	cfg := MakeDefaultServerConfig(threads...)
 
 	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
-	if err != nil && testing {
+	if err != nil {
 		t.Fatalf("Error %s at server initialization", err)
-	} else if err != nil {
-		panic(fmt.Sprintf("Error %s at server initialization", err))
 	}
 	go srv.Run(ctx)
 
@@ -66,15 +66,13 @@ func (e EchoSend) Terminate(err error) {
 }
 
 // See [setUpEchoServer].
-func setUpEchoSendServer(t *testing.T, ctx context.Context, testing bool, resCh chan string, threads ...uint) *Server[*EchoSend, int, string] {
+func setUpEchoSendServer(t testing.TB, ctx context.Context, resCh chan string, threads ...uint) *Server[*EchoSend, int, string] {
 	handler := &EchoSend{BackCh: resCh}
 	cfg := MakeDefaultServerConfig(threads...)
 
 	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
-	if err != nil && testing {
+	if err != nil {
 		t.Fatalf("Error %s at server initialization", err)
-	} else if err != nil {
-		panic(fmt.Sprintf("Error %s at server initialization", err))
 	}
 	go srv.Run(ctx)
 	return srv
@@ -101,15 +99,13 @@ func (Hanger) Terminate(err error) {
 // If testing = false the function panics on sever intialization error.
 // The function runs the server for you in a goroutine.
 // The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
-func setUpHangerServer(t *testing.T, ctx context.Context, testing bool, threads ...uint) *Server[Hanger, int, string] {
+func setUpHangerServer(t testing.TB, ctx context.Context, threads ...uint) *Server[Hanger, int, string] {
 	handler := Hanger{}
 	cfg := MakeDefaultServerConfig(threads...)
 
 	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
-	if err != nil && testing {
+	if err != nil {
 		t.Fatalf("Error %s at server initialization", err)
-	} else if err != nil {
-		panic(fmt.Sprintf("Error %s at server initialization", err))
 	}
 	go srv.Run(ctx)
 	return srv
@@ -126,4 +122,75 @@ func (Panicker) Init() error {
 }
 
 func (Panicker) Terminate(err error) {
+}
+
+func setUpResponderServer(t testing.TB, ctx context.Context, size int, threads ...uint) (*Server[*Responder, int, int], chan int) {
+	ch := make(chan int, size)
+	handler := &Responder{res: ch}
+	cfg := MakeDefaultServerConfig(threads...)
+
+	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
+	if err != nil {
+		t.Fatalf("Error %s at server initialization", err)
+	}
+	go srv.Run(ctx)
+	return srv, ch
+}
+
+type Responder struct {
+	res     chan int
+	size    int
+	working atomic.Int32
+}
+
+func (t *Responder) Handle(msg ContextMessage[int, int]) (int, error) {
+	t.working.Add(1)
+	defer t.working.Add(-1)
+	t.res <- msg.Value
+	return 0, nil
+}
+
+func (t *Responder) Init() error {
+	if t.res == nil {
+		return fmt.Errorf("res cannot be nil")
+	}
+	return nil
+}
+
+func (t *Responder) Terminate(err error) {
+	defer close(t.res)
+	if t.working.Load() != 0 {
+		time.Sleep(time.Millisecond * 50)
+	}
+}
+
+func setUpCounterServer(t testing.TB, ctx context.Context, threads ...uint) (*Server[*Counter, int, int], *atomic.Uint64) {
+	handler := &Counter{}
+	cfg := MakeDefaultServerConfig(threads...)
+
+	srv, err := NewServer(handler, cfg, DefaultPanicRecover)
+	if err != nil {
+		t.Fatalf("Error %s at server initialization", err)
+	}
+	go srv.Run(ctx)
+	return srv, &handler.Counter
+}
+
+type Counter struct {
+	Counter atomic.Uint64
+	working atomic.Int32
+}
+
+func (c *Counter) Handle(msg ContextMessage[int, int]) (int, error) {
+	c.working.Add(1)
+	defer c.working.Add(-1)
+	c.Counter.Add(1)
+	return 0, nil
+}
+
+func (c *Counter) Init() error {
+	return nil
+}
+
+func (c *Counter) Terminate(err error) {
 }

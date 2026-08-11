@@ -4,10 +4,10 @@
 package crossbow
 
 import (
+	"context"
 	"crossbow/internal/queue"
 	"sync"
 	"sync/atomic"
-	"context"
 )
 
 // Server is the central object for crossbow. It represents a handler with a inbox attached. The handler processes messages from the inbox in a FIFO manner by default.
@@ -18,12 +18,12 @@ import (
 type Server[T ServerHandler[M, O], M any, O any] struct {
 	queue             *queue.Queue[ContextMessage[M, O]]
 	handler           T
-	workers 		  uint
+	workers           uint
 	wg                sync.WaitGroup
 	terminated        atomic.Bool
 	stats             serverStats
 	generateTimestamp bool
-	replyPool 		  sync.Pool
+	replyPool         sync.Pool
 	recover           func(ContextMessage[M, O], T, error, []byte) error
 }
 
@@ -49,7 +49,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 	srv := &Server[T, M, O]{
 		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), makePolicy[ContextMessage[M, O]](cfg.Policy)),
 		handler:           handler,
-		workers: 		   cfg.Workers,
+		workers:           cfg.Workers,
 		recover:           recover,
 		generateTimestamp: cfg.GenerateTimestamps,
 	}
@@ -70,6 +70,7 @@ func (s *Server[T, M, O]) worker(ctx context.Context) {
 		}
 
 		msg, ok := s.queue.Pop()
+
 		if !ok {
 			select {
 			case <-ctx.Done():
@@ -85,4 +86,3 @@ func (s *Server[T, M, O]) worker(ctx context.Context) {
 		s.dispatch(msg)
 	}
 }
-

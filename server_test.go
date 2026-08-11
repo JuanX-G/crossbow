@@ -7,11 +7,12 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestCallServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	srv := setUpEchoServer(t, ctx, true)
+	srv := setUpEchoServer(t, ctx)
 	defer cancel()
 
 	res, err := srv.Call(ctx, 42)
@@ -30,7 +31,7 @@ func TestCallServer(t *testing.T) {
 func TestSendServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	resCh := make(chan string)
-	srv := setUpEchoSendServer(t, ctx, true, resCh)
+	srv := setUpEchoSendServer(t, ctx, resCh)
 	defer cancel()
 
 	err := srv.Send(ctx, 42)
@@ -63,7 +64,7 @@ func TestHandlerInitFails(t *testing.T) {
 
 func TestServerShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	srv := setUpEchoServer(t, ctx, true)
+	srv := setUpEchoServer(t, ctx)
 
 	cancel()
 	err := srv.Send(ctx, -42)
@@ -74,7 +75,7 @@ func TestServerShutdown(t *testing.T) {
 
 func TestServerShutdownReturnsTerminated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	srv := setUpHangerServer(t, ctx, true)
+	srv := setUpHangerServer(t, ctx)
 
 	srv.Send(context.Background(), 42)
 	cancel()
@@ -106,5 +107,40 @@ func TestServerPanicRecovery(t *testing.T) {
 	}
 	if !srv.Terminated() {
 		t.Fatalf("handler panicked, and recovery returned an error, but server reports terminated == false")
+	}
+}
+
+func TestMultipleWorkersSendback(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(time.Second*3))
+	defer cancel()
+	srv, ch := setUpResponderServer(t, ctx, 4, 4)
+
+	for range 4 {
+		srv.Send(ctx, 1)
+	}
+
+	counter := 0
+	for v := range ch {
+		counter++
+		if v != 1 {
+			t.Fatalf("expected 1 sent back, found: %d", v)
+		}
+	}
+	if counter != 4 {
+		t.Fatalf("expected 4 messages sent back, found: %d", counter)
+	}
+}
+
+func TestMultipleWorkersCounter(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(time.Second*4))
+	defer cancel()
+	srv, counter := setUpCounterServer(t, ctx, 4)
+
+	for range 4 {
+		srv.Send(ctx, 1)
+	}
+	time.Sleep(time.Duration(time.Millisecond * 600))
+	if c := counter.Load(); c != 4 {
+		t.Fatalf("expected 4 messages sent back, found: %d", c)
 	}
 }

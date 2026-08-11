@@ -101,27 +101,19 @@ func (s *Server[T, M, O]) drainRemaining() {
 // reporting the underlying channel to be closed. The main loop awaits new data and wakes up when
 // the queue notifies it.
 func (s *Server[T, M, O]) Run(ctx context.Context) {
-	defer func() {
-		s.shutdown(nil)
-		s.drainRemaining()
-		s.wg.Wait()
-	}()
-
 	workerCount := int(s.workers)
 	for range workerCount {
 		s.wg.Add(1)
 		go s.worker(ctx)
 	}
+	go func() {
+		<-ctx.Done()
+		s.stop()
+	}()
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case _, ok := <-s.queue.Notify():
-			if !ok || s.terminated.Load() {
-				return
-			}
-			s.processQueue(ctx)
-		}
-	}
+func (s *Server[T, M, O]) stop() {
+	s.shutdown(nil)
+	s.drainRemaining()
+	s.wg.Wait()
 }
