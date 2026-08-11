@@ -24,6 +24,7 @@ type Server[T ServerHandler[M, O], M any, O any] struct {
 	stats             serverStats
 	generateTimestamp bool
 	replyPool         sync.Pool
+	terminatedCh 	  chan struct{}
 	recover           func(ContextMessage[M, O], T, error, []byte) error
 }
 
@@ -51,6 +52,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 		handler:           handler,
 		workers:           cfg.Workers,
 		recover:           recover,
+		terminatedCh: 	   make(chan struct{}, 1),
 		generateTimestamp: cfg.GenerateTimestamps,
 	}
 	srv.replyPool = sync.Pool{

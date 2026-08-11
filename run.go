@@ -55,6 +55,8 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 
 func (s *Server[T, M, O]) shutdown(reason error) {
 	if s.terminated.CompareAndSwap(false, true) {
+		s.terminatedCh <- struct{}{}
+		close(s.terminatedCh)
 		s.queue.Close()
 		s.handler.Terminate(reason)
 	}
@@ -107,8 +109,12 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 		go s.worker(ctx)
 	}
 	go func() {
-		<-ctx.Done()
-		s.stop()
+		select {
+		case <-ctx.Done():
+			s.stop()
+		case <- s.terminatedCh:
+			return
+		}
 	}()
 }
 
