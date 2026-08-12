@@ -26,8 +26,7 @@ Crossbow allows you to limit the scope of every operation to an appropriate hand
 making your code for modular and safer.
 
 ## Versioning
-Crossbow is intended to strcitly follow SemVer from version v0.1 onwards. Releases marked 
-as v0-alpha.x.y or v0-beta.x.y do not make any compatibility guarantees.
+Crossbow follows SemVer. Backward compatibility will be assured from v1 onwards.
 We intends to use the standard go support cycle, each version of crossbow will be 
 maintained for two version of the Go language.
 
