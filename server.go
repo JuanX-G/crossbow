@@ -1,6 +1,13 @@
-/* Crossbow, a simple go library for actor-like worker-pools with inboxes supporting parallel and synchronous processing.
- * Copyright (C) 2026 Maciej "juan_em" Woźniak, full license found in the LICENSE file
- */
+// Copyright 2026 Maciej "juan_em (JuanX-G)" Woźniak
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Or use the bundled copy in the LICENSE file.
+
 package crossbow
 
 import (
@@ -24,7 +31,7 @@ type Server[T ServerHandler[M, O], M any, O any] struct {
 	stats             serverStats
 	generateTimestamp bool
 	replyPool         sync.Pool
-	terminatedCh 	  chan struct{}
+	terminatedCh      chan struct{}
 	recover           func(ContextMessage[M, O], T, error, []byte) error
 }
 
@@ -52,7 +59,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 		handler:           handler,
 		workers:           cfg.Workers,
 		recover:           recover,
-		terminatedCh: 	   make(chan struct{}, 1),
+		terminatedCh:      make(chan struct{}, 1),
 		generateTimestamp: cfg.GenerateTimestamps,
 	}
 	srv.replyPool = sync.Pool{

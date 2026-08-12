@@ -25,7 +25,7 @@ go test -tags=leaktest -c -o tests
 for test in $(go test -list . | grep -E "^(Test|Example)"); do ./tests -test.run "^$test\$" &>/dev/null && echo -e "\n$test passed." || echo -e "\n$test failed"; done
 ```
 
-Runs all benchmarks
+Runs all benchmarks. Use `-benchmem`
 ```Bash
 go test -bench=.
 ```

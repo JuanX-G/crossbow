@@ -1,11 +1,20 @@
-/* Crossbow, a simple go library for actor-like worker-pools with inboxes supporting parallel and synchronous processing.
- * Copyright (C) 2026 Maciej "juan_em" Woźniak, full license found in the LICENSE file
- */
+// Copyright 2026 Maciej "juan_em (JuanX-G)" Woźniak
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Or use the bundled copy in the LICENSE file.
+
 package queue
 
 import (
+	"errors"
 	"testing"
 	"time"
+
 )
 
 func TestPushPop(t *testing.T) {
@@ -99,4 +108,18 @@ func TestPolicies(t *testing.T) {
 			}
 		}
 	}
+}
+
+func Fuzz (f *testing.F) {
+	q := NewQueue(1, 4, DropNewestPolicy[int]{})
+	f.Add(1)
+	f.Fuzz(func(t *testing.T, in int){
+		err := q.Push(t.Context(), in)
+		if err != nil {
+			panic("1")
+		}
+		if err != nil && !errors.Is(err, ErrDropped) {
+			t.Errorf("Expected ErrDropped, found: %#v", err)
+		}
+	})
 }
