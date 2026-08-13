@@ -12,7 +12,7 @@ package crossbow
 
 import (
 	"context"
-	"crossbow/internal/queue"
+	"github.com/JuanX-G/crossbow/internal/queue"
 	"sync"
 	"sync/atomic"
 )

@@ -11,7 +11,7 @@
 package crossbow
 
 import (
-	"crossbow/internal/queue"
+	"github.com/JuanX-G/crossbow/internal/queue"
 	"fmt"
 )
 
