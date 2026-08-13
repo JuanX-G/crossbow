@@ -1,4 +1,4 @@
-module crossbow
+module github.com/JuanX-G/crossbow
 
 go 1.26.5
 
