@@ -14,7 +14,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
 )
 
 func TestPushPop(t *testing.T) {
@@ -45,7 +44,7 @@ func TestNotify(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	ctx := t.Context()
-	q := NewQueue[int](2, 6, BlockPolicy[int]{})
+	q := NewQueue(2, 6, BlockPolicy[int]{})
 	q.Push(ctx, 42)
 	<-q.Notify()
 	q.Close()
@@ -110,10 +109,10 @@ func TestPolicies(t *testing.T) {
 	}
 }
 
-func Fuzz (f *testing.F) {
+func Fuzz(f *testing.F) {
 	q := NewQueue(1, 4, DropNewestPolicy[int]{})
 	f.Add(1)
-	f.Fuzz(func(t *testing.T, in int){
+	f.Fuzz(func(t *testing.T, in int) {
 		err := q.Push(t.Context(), in)
 		if err != nil {
 			panic("1")

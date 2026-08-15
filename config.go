@@ -11,8 +11,9 @@
 package crossbow
 
 import (
-	"crossbow/internal/queue"
 	"fmt"
+
+	"github.com/JuanX-G/crossbow/internal/queue"
 )
 
 // DefaultPanicRecover is a basic handler for panics inside of the handler. It will return
@@ -25,8 +26,8 @@ func DefaultPanicRecover[T ServerHandler[M, O], M any, O any](msg ContextMessage
 type MailboxPolicy int
 
 const (
-	PolicyUnbounded  MailboxPolicy = iota // The queue is allowed to grow indefnitely, generally dicouraged for most use cases
-	PolicyBlock                           // Default policy, if the queue is full Send() or Call() will block until there is space in the queue
+	PolicyBlock      MailboxPolicy = iota // Default policy, if the queue is full Send() or Call() will block until there is space in the queue
+	PolicyUnbounded                       // The queue is allowed to grow indefnitely, generally dicouraged for most use cases
 	PolicyDropNewest                      // If the queue if full Send() or Call() will drop the message and return an appropriate error
 	PolicyDropOldest                      // If the queue if full Send() or Call() will drop the oldest message (first in line) and the enqueue the just passed message. If a failure occurs ErrFull will be returned
 )
@@ -46,13 +47,20 @@ func makePolicy[T any](mp MailboxPolicy) queue.MailboxPolicy[T] {
 	}
 }
 
+func isPolicyUnbounded(mp MailboxPolicy) bool {
+	if mp == PolicyUnbounded {
+		return true
+	} else {
+		return false
+	}
+}
+
 // ServerConfig provides a recovery function settings for a server and facilitates easy validation
 type ServerConfig struct {
 	Workers            uint          // The amount of workers to run the handler over, 1 for standard FIFO ordering
 	MailboxSize        uint          // Maximum size of a the servers mailbox, must be greater than 0
 	Policy             MailboxPolicy // MailboxPolicy according to [MailboxPolicy]
 	GenerateTimestamps bool          // Switch for autogeneration of timestamps for the Timestamp field on ContextMessage [ContextMessage]
-	Unbounded          bool
 }
 
 type RecoverFn[T ServerHandler[M, O], M any, O any] = func(ContextMessage[M, O], T, error, []byte) error // function called when the handler panics, if it returns an erros the server terminates
@@ -88,7 +96,7 @@ func (s *ServerConfig) Validate() error {
 	if s.Workers == 0 {
 		return ServerConfigError{ErrType: ConfigErrorWorkersZero}
 	}
-	if s.MailboxSize == 0 && !s.Unbounded {
+	if s.MailboxSize == 0 && !isPolicyUnbounded(s.Policy) {
 		return ServerConfigError{ErrType: ConfigErrorMailboxSizeZero}
 	}
 	return nil

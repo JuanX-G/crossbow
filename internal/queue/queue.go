@@ -15,7 +15,7 @@ import (
 	"errors"
 	"sync"
 
-	"crossbow/internal/ring"
+	"github.com/JuanX-G/crossbow/internal/ring"
 )
 
 var (

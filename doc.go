@@ -35,51 +35,49 @@
 // Most importantly you need to have a Handle(ContextMessage[M, O]) method, this is the handling loop of your server;
 // any data sent ot it is popped from the inbox and passed to it.
 //
-// 	// Simple stateless handler that send back data through the provided channel
-// 	type Foo struct{
-// 	    x int
-// 	}
+//		// Simple stateless handler that send back data through the provided channel
+//		type Foo struct{
+//		    x int
+//		}
 //
-// 	func (e *Foo) Handle(msg ContextMessage[int, int]) (int, error) {
-// 	    if e.x == 2137 {
-// 	        fmt.Println("21:37")
-// 	        e.x = 0
-// 	        return 0, nil
-// 	    } else {
-// 	        e.x = msg.Value // Update internal state. Safe if the thread count is 1
-// 	        return msg.Value, nil
-// 	    }
-// 	}
+//		func (e *Foo) Handle(msg ContextMessage[int, int]) (int, error) {
+//		    if e.x == 2137 {
+//		        fmt.Println("21:37")
+//		        e.x = 0
+//		        return 0, nil
+//		    } else {
+//		        e.x = msg.Value // Update internal state. Safe if the thread count is 1
+//		        return msg.Value, nil
+//		    }
+//		}
 //
-// 	// Simple init stub. Usually used to initialize connections and validate fields
-// 	func (e *Foo) Init() error {
-// 		return nil
-// 	}
+//		// Simple init stub. Usually used to initialize connections and validate fields
+//		func (e *Foo) Init() error {
+//			return nil
+//		}
 //
-// 	// Handles the closing of connections etc.
-// 	func (e *Foo) Terminate(err error) {
-// 	    if e.x == 42 {
-// 	        fmt.Println("Ah! 42")
-// 	    }
-// 	}
+//		// Handles the closing of connections etc.
+//		func (e *Foo) Terminate(err error) {
+//		    if e.x == 42 {
+//		        fmt.Println("Ah! 42")
+//		    }
+//		}
 //
-// 	func main() {
-//		handler := &Foo{}
-// 		cfg := MakeDefaultServerConfig(1) // one worker for sequential processing
-// 		srv, _ := NewServer[*Foo, int, int](handler, cfg, DefaultPanicRecover)
+//		func main() {
+//			handler := &Foo{}
+//			cfg := MakeDefaultServerConfig(1) // one worker for sequential processing
+//			srv, _ := NewServer[*Foo, int, int](handler, cfg, DefaultPanicRecover)
 //
-// 		ctx, cancel := context.WithCancel(context.Background())
-// 		defer cancel()
-// 		go srv.Run(ctx) // this must be done before sending anything to the server
+//			ctx, cancel := context.WithCancel(context.Background())
+//			defer cancel()
+//			go srv.Run(ctx) // this must be done before sending anything to the server
 //
-// 		rqCtx, _ := context.WithCancel(ctx) // canceling a requests context won't stop the whole server
-// 		_ = srv.Send(rqCtx, 2137) // Send() does not block awaiting a response and just discards any
+//			rqCtx, _ := context.WithCancel(ctx) // canceling a requests context won't stop the whole server
+//			_ = srv.Send(rqCtx, 2137) // Send() does not block awaiting a response and just discards any
 //
-//     	out, err := srv.Call(rqCtx, 11)
-//		// Output will be 0; err will be nil; and the string "21:37" will be printed
-// 	}
-//
-//
+//	    	out, err := srv.Call(rqCtx, 11)
+//			// Output will be 0; err will be nil; and the string "21:37" will be printed
+//		}
 //
 // # Toolchain
 //
@@ -87,6 +85,7 @@
 // with `-tags=leaktest`, it is encouraged to run such test after making changes to the code base.
 // This module requires 'go.uber.org/goleak' but, it is not neccesary for the library functions.
 package crossbow
+
 // Copyright 2026 Maciej "juan_em (JuanX-G)" Woźniak
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

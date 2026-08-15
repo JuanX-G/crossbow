@@ -58,6 +58,7 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 
 	select {
 	case <-ctx.Done():
+		s.replyPool.Put(resCh)
 		return zero, ctx.Err()
 	case res := <-resCh:
 		s.replyPool.Put(resCh)
