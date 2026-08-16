@@ -14,6 +14,7 @@ import (
 	"testing"
 )
 
+// Test the behaviour of the [MakeDefaultServerConfig] with different inputs
 func TestDefaultConfigWorkers(t *testing.T) {
 	tests := map[int]uint{ // map input to expected value of Workers in the output struct
 		0:  1,
@@ -21,7 +22,7 @@ func TestDefaultConfigWorkers(t *testing.T) {
 		-1: 1, // sentinel for in passing nothing
 	}
 	for in, ex := range tests {
-		if in == -1 { // check default to 1 when to argument is provided
+		if in == -1 { // check default to 1 when no argument is provided
 			cfg := MakeDefaultServerConfig()
 			if cfg.Workers != 1 {
 				t.Fatalf("passed no workers argument to MakeDefaultServerConfig, expected Workers: %d in the final config, found: %d", ex, cfg.Workers)
@@ -35,6 +36,7 @@ func TestDefaultConfigWorkers(t *testing.T) {
 	}
 }
 
+// Test the config Validate function behaviour under invalid data
 func TestConfigValidate(t *testing.T) {
 	tests := map[ServerConfig]ServerConfigError{
 		ServerConfig{Workers: 0}:                 ServerConfigError{ErrType: ConfigErrorWorkersZero},
