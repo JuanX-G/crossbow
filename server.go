@@ -12,9 +12,10 @@ package crossbow
 
 import (
 	"context"
-	"github.com/JuanX-G/crossbow/internal/queue"
 	"sync"
 	"sync/atomic"
+
+	"github.com/JuanX-G/crossbow/internal/queue"
 )
 
 // Server is the central object for crossbow. It represents a handler with a inbox attached. The handler processes messages from the inbox in a FIFO manner by default.
