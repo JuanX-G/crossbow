@@ -143,6 +143,7 @@ func TestMultipleWorkersSendback(t *testing.T) {
 	}
 }
 
+// Check correct handling of the worker pool when workers > 1
 func TestMultipleWorkersCounter(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(time.Second*4))
 	defer cancel()
