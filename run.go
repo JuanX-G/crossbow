@@ -16,6 +16,9 @@ import (
 	"runtime/debug"
 )
 
+// Place a in the queue, return ErrServerTerminated if the server
+// is terminated. May return other errors if pushing fails depending
+// on the mailbox policy.
 func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
 	if s.terminated.Load() {
 		return ErrServerTerminated
@@ -26,6 +29,9 @@ func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
 	return nil
 }
 
+// Calles the handler. Tries to recover and call the panic handler.
+// Returns the appropriate value through the channel in msg.
+// A zero value of O is used in case of a panic.
 func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 	var zero O
 	var output O
@@ -60,6 +66,8 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 	}
 }
 
+// Shutdown the server, safe to call multiple times.
+// Subsequent calles after a shutdown are no-ops
 func (s *Server[T, M, O]) shutdown(reason error) {
 	if s.terminated.CompareAndSwap(false, true) {
 		s.terminatedCh <- struct{}{}
@@ -69,27 +77,8 @@ func (s *Server[T, M, O]) shutdown(reason error) {
 	}
 }
 
-func (s *Server[T, M, O]) processQueue(ctx context.Context) error {
-	for {
-		if s.terminated.Load() {
-			return ErrServerTerminated
-		}
-
-		msg, ok := s.queue.Pop()
-		if !ok {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			s.dispatch(msg)
-		}
-	}
-	return nil
-}
-
+// Drain remaining messages in case of a shutdown.
+// Send a zero value of O and [ErrServerTerminated]
 func (s *Server[T, M, O]) drainRemaining() {
 	var zero O
 	for {
@@ -102,8 +91,6 @@ func (s *Server[T, M, O]) drainRemaining() {
 		}
 	}
 }
-
-// # Public API for Server
 
 // Run sets up the server's main loop and defers cleanup functions. It must be run before sending anything
 // to the server. It returns upon context cancelation or s.terminated being true or the queues.Notify()
@@ -125,6 +112,7 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 	}()
 }
 
+// call shutdown. Drain enqueue messages and waits for remaining processing to finish.
 func (s *Server[T, M, O]) stop() {
 	s.shutdown(nil)
 	s.drainRemaining()

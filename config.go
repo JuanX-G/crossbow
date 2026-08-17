@@ -48,11 +48,7 @@ func makePolicy[T any](mp MailboxPolicy) queue.MailboxPolicy[T] {
 }
 
 func isPolicyUnbounded(mp MailboxPolicy) bool {
-	if mp == PolicyUnbounded {
-		return true
-	} else {
-		return false
-	}
+	return mp == PolicyUnbounded
 }
 
 // ServerConfig provides a recovery function settings for a server and facilitates easy validation

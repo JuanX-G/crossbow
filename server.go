@@ -19,8 +19,8 @@ import (
 )
 
 // Server is the central object for crossbow. It represents a handler with a inbox attached. The handler processes messages from the inbox in a FIFO manner by default.
-// The first type parameter is a user defined handler that implements the ServerHandler[M any, O any] interface. M is the message type that the handler acccepts
-// wrapped with additional context by ContextMessage[M]. O is the output from the handler, once the handler finishes it must return O and error, both will be passed on to
+// The first type parameter is a user defined handler that implements the [ServerHandler] interface. M is the message type that the handler acccepts
+// wrapped with additional context by [ContextMessage]. O is the output from the handler, once the handler finishes it must return O and error, both will be passed on to
 // the caller when using the Call method, and disacarded if using Send. The server is threadsafe within its public APIs. The default config,
 // provided by MakeDefaultServerConfig [MakeDefaultServerConfig], sets the max worker count to 1; this guarantees FIFO processing od messages sent like in regular actor systems.
 type Server[T ServerHandler[M, O], M any, O any] struct {

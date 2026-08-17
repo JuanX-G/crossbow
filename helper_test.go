@@ -30,14 +30,10 @@ func (Echo) Init() error {
 	return nil
 }
 
-func (Echo) Terminate(err error) {
-}
+func (Echo) Terminate(err error) {}
 
-// Sets up a server using the Echo handler. Testing informs the handler if t will be nil.
-// For benchmarks for example set testing = false and pass nil as the t parameter.
-// If testing = false the function panics on sever intialization error.
-// The function runs the server for you in a goroutine.
-// The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
+// Sets up a server using the Echo handler. The function runs the server
+// for you. The Argument threads is passed, directly to [MakeDefaultServerConfig].
 func setUpEchoServer(t testing.TB, ctx context.Context, threads ...uint) *Server[Echo, int, string] {
 	handler := Echo{}
 	cfg := MakeDefaultServerConfig(threads...)
@@ -85,7 +81,7 @@ func setUpEchoSendServer(t testing.TB, ctx context.Context, resCh chan string, t
 	return srv
 }
 
-// Example of a handler that hangs on the first message it recives
+// Example of a handler that hangs forever on the first message it recives
 type Hanger struct{}
 
 func (Hanger) Handle(msg ContextMessage[int, string]) (string, error) {
@@ -98,14 +94,9 @@ func (Hanger) Init() error {
 	return nil
 }
 
-func (Hanger) Terminate(err error) {
-}
+func (Hanger) Terminate(err error) {}
 
-// Sets up a server using the Echo handler. Testing informs the handler if t will be nil.
-// For benchmarks for example set testing = false and pass nil as the t parameter.
-// If testing = false the function panics on sever intialization error.
-// The function runs the server for you in a goroutine.
-// The Argument threads is passed, unrolled, into [MakeDefaultServerConfig].
+// See [setUpEchoServer].
 func setUpHangerServer(t testing.TB, ctx context.Context, threads ...uint) *Server[Hanger, int, string] {
 	handler := Hanger{}
 	cfg := MakeDefaultServerConfig(threads...)
@@ -118,6 +109,7 @@ func setUpHangerServer(t testing.TB, ctx context.Context, threads ...uint) *Serv
 	return srv
 }
 
+// Handler that panicks on the first message it recives.
 type Panicker struct{}
 
 func (Panicker) Handle(msg ContextMessage[int, string]) (string, error) {
@@ -131,6 +123,7 @@ func (Panicker) Init() error {
 func (Panicker) Terminate(err error) {
 }
 
+// See [setUpEchoServer].
 func setUpResponderServer(t testing.TB, ctx context.Context, size int, threads ...uint) (*Server[*Responder, int, int], chan int) {
 	ch := make(chan int, size)
 	handler := &Responder{res: ch}
@@ -144,6 +137,7 @@ func setUpResponderServer(t testing.TB, ctx context.Context, size int, threads .
 	return srv, ch
 }
 
+// A handler that responds over a channel
 type Responder struct {
 	res     chan int
 	size    int
@@ -164,6 +158,7 @@ func (t *Responder) Init() error {
 	return nil
 }
 
+// Terminate waits for all handling to stop
 func (t *Responder) Terminate(err error) {
 	defer close(t.res)
 	if t.working.Load() != 0 {
@@ -171,6 +166,7 @@ func (t *Responder) Terminate(err error) {
 	}
 }
 
+// See [setUpEchoServer].
 func setUpCounterServer(t testing.TB, ctx context.Context, threads ...uint) (*Server[*Counter, int, int], *atomic.Uint64) {
 	handler := &Counter{}
 	cfg := MakeDefaultServerConfig(threads...)
@@ -183,6 +179,7 @@ func setUpCounterServer(t testing.TB, ctx context.Context, threads ...uint) (*Se
 	return srv, &handler.Counter
 }
 
+// A handler that atomically count every message it recieves
 type Counter struct {
 	Counter atomic.Uint64
 	working atomic.Int32
@@ -199,5 +196,4 @@ func (c *Counter) Init() error {
 	return nil
 }
 
-func (c *Counter) Terminate(err error) {
-}
+func (c *Counter) Terminate(err error) {}

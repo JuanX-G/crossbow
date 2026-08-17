@@ -36,6 +36,6 @@ func newContextMessage[M any, O any](ctx context.Context, value M, resCh chan Re
 // Response from a handler that carries the error. It is up to the programmers discrection
 // when an error should be returned and if Value can be valid if Err != nil.
 type Response[O any] struct {
-	Value O
-	Err   error
+	Value O     // Result of handling the message
+	Err   error // Error returned from the handler
 }

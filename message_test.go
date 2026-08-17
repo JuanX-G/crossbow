@@ -16,6 +16,7 @@ import (
 	"time"
 )
 
+// Test auto-timestamping of the newContextMessage function
 func TestMessageTimestamp(t *testing.T) {
 	msg := newContextMessage[int, int](context.Background(), 10, nil, true)
 	if msg.Timestamp.IsZero() {

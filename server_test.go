@@ -54,6 +54,7 @@ func TestSendServer(t *testing.T) {
 	}
 }
 
+// check that if the handler fails to initialize the server doesn't to
 func TestHandlerInitFails(t *testing.T) {
 	// Pre-check handler behaviour
 	handler := &EchoSend{BackCh: nil}
@@ -69,6 +70,7 @@ func TestHandlerInitFails(t *testing.T) {
 	}
 }
 
+// Check if the server respects context cancelations
 func TestServerShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	srv := setUpEchoServer(t, ctx)
@@ -80,6 +82,7 @@ func TestServerShutdown(t *testing.T) {
 	}
 }
 
+// Checks if the server drops all awaiting messages upon termination
 func TestServerShutdownReturnsTerminated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	srv := setUpHangerServer(t, ctx)
@@ -95,6 +98,7 @@ func TestServerShutdownReturnsTerminated(t *testing.T) {
 	}
 }
 
+// Check that the server terminates when the panic handler returns err != nil
 func TestServerPanicRecovery(t *testing.T) {
 	handler := &Panicker{}
 
@@ -117,6 +121,7 @@ func TestServerPanicRecovery(t *testing.T) {
 	}
 }
 
+// Check correct handling of the worker pool
 func TestMultipleWorkersSendback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(time.Second*3))
 	defer cancel()
@@ -138,6 +143,7 @@ func TestMultipleWorkersSendback(t *testing.T) {
 	}
 }
 
+// Check correct handling of the worker pool when workers > 1
 func TestMultipleWorkersCounter(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(time.Second*4))
 	defer cancel()

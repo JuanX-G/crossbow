@@ -109,7 +109,7 @@ func TestPolicies(t *testing.T) {
 	}
 }
 
-func Fuzz(f *testing.F) {
+func FuzzQueue(f *testing.F) {
 	q := NewQueue(1, 4, DropNewestPolicy[int]{})
 	f.Add(1)
 	f.Fuzz(func(t *testing.T, in int) {
