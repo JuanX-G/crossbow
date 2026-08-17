@@ -14,9 +14,10 @@ import (
 	"sync/atomic"
 )
 
+// ServerStats as regular ints
 type StatsSnapshot struct {
-	Failures uint64
-	Panics   uint64
+	Failures uint64 // amount of failures since start
+	Panics   uint64 // amount of panis since start
 }
 
 type serverStats struct {
@@ -24,22 +25,27 @@ type serverStats struct {
 	panics   atomic.Uint64
 }
 
+// Increment the fail counter
 func (s *serverStats) AddFail() {
 	s.failures.Add(1)
 }
 
+// Return the failure count
 func (s *serverStats) FailCount() uint64 {
 	return s.failures.Load()
 }
 
+// Increment the panic counter
 func (s *serverStats) AddPanic() {
 	s.panics.Add(1)
 }
 
+// Return the panic count
 func (s *serverStats) PanicCount() uint64 {
 	return s.panics.Load()
 }
 
+// Return both counters as regular ints
 func (s *serverStats) Snapshot() StatsSnapshot {
 	return StatsSnapshot{Failures: s.FailCount(), Panics: s.PanicCount()}
 }

@@ -15,14 +15,14 @@ import (
 )
 
 type ServerHandler[M any, O any] interface {
-	Init() error
-	Handle(ContextMessage[M, O]) (O, error)
-	Terminate(reason error)
+	Init() error                            // called at server startup
+	Handle(ContextMessage[M, O]) (O, error) // Handle incoming messages, called repeatadly for that purpose
+	Terminate(reason error)                 // called at server shutdown
 }
 
 // CustomMailboxPolicy defines rules for handling attempts to push to
 // a full queue. The last argument is the item being pushed, the second
-// one the the queue object [internal/queue]. The first argument is the
+// one the the queue object [crossbow/internal/queue]. The first argument is the
 // context passed by the caller, you do not need to handle it in any
 // special way. Return an apropriate error if the pushing fails,
 // if so, you generally should not modify the underlying queues content so as
