@@ -6,7 +6,7 @@ import (
 	. "github.com/JuanX-G/crossbow"
 )
 
-// hold a сancel func and a server pointer
+// hold a сancel func and a server pointer.
 type cancelableServer[T ServerHandler[M, O], M, O any] struct {
 	server *Server[T, M, O]
 	cancel func()
@@ -18,7 +18,7 @@ type Registry[K comparable, T ServerHandler[M, O], M, O any] struct {
 	servers map[K]*cancelableServer[T, M, O]
 }
 
-// Returns an empty registry
+// Returns an empty registry.
 func NewRegistry[K comparable, T ServerHandler[M, O], M any, O any]() *Registry[K, T, M, O] {
 	return &Registry[K, T, M, O]{
 		servers: make(map[K]*cancelableServer[T, M, O]),

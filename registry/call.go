@@ -20,7 +20,7 @@ func (s *Registry[K, T, M, O]) Send(ctx context.Context, k K, msg M) error {
 	return err
 }
 
-// See [crossbow/registry/Send], this is the Call equivalent.
+// See [crossbow/registry/Send]. this is the Call equivalent.
 func (s *Registry[K, T, M, O]) Call(ctx context.Context, k K, msg M) (O, error) {
 	s.mu.RLock()
 	managedSrv, ok := s.servers[k]
