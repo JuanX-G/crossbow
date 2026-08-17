@@ -24,15 +24,14 @@ func (s *Server[T, M, O]) Send(ctx context.Context, req M) error {
 		return ErrServerTerminated
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	msg := newContextMessage[M, O](ctx, req, nil, s.generateTimestamp)
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		if err := s.enqueue(msg); err != nil {
-			return fmt.Errorf("queue error: %w", err)
-		}
+	if err := s.enqueue(msg); err != nil {
+		return fmt.Errorf("queue error: %w", err)
 	}
 	return nil
 }
@@ -58,7 +57,6 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 
 	select {
 	case <-ctx.Done():
-		s.replyPool.Put(resCh)
 		return zero, ctx.Err()
 	case res := <-resCh:
 		s.replyPool.Put(resCh)
