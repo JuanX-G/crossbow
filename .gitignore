@@ -1,5 +1,6 @@
 tests
 main
+tmp*
 internal/main/
 tmp*/
 dbg*/
