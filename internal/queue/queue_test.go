@@ -37,6 +37,7 @@ func TestPushPop(t *testing.T) {
 	}
 }
 
+// Test sending the notifications of new items.
 func TestNotify(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 6, BlockPolicy[int]{})
@@ -48,6 +49,7 @@ func TestNotify(t *testing.T) {
 	}
 }
 
+// Test the queue's behaviour on close
 func TestClose(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 6, BlockPolicy[int]{})
@@ -63,6 +65,7 @@ func TestClose(t *testing.T) {
 	}
 }
 
+// Test that the blocking policy actually blocks
 func TestBlockPolicy(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 2, BlockPolicy[int]{})
@@ -96,6 +99,7 @@ type policyTest struct {
 	endState []int
 }
 
+// Test that drop policies drop correct items.
 func TestPolicies(t *testing.T) {
 	tests := map[MailboxPolicy[int]]policyTest{
 		DropNewestPolicy[int]{}: policyTest{input: []int{1, 2, 3}, endState: []int{1, 2}},
