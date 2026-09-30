@@ -24,10 +24,6 @@ var (
 	ErrDropped = errors.New("message dropped")
 )
 
-type MailboxPolicy[T any] interface {
-	Enqueue(context.Context, *Queue[T], T) error
-}
-
 type Queue[T any] struct {
 	mu sync.Mutex
 
