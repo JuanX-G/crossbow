@@ -70,7 +70,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 		terminatedCh:      make(chan struct{}, 1),
 		generateTimestamp: cfg.GenerateTimestamps,
 	}
-	srv.replyPool = sync.Pool{
+	srv.replyPool = sync.Pool{ // Initialize the response channel pool
 		New: func() any {
 			return make(chan Response[O], 1)
 		},
