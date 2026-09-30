@@ -37,6 +37,7 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 	var output O
 	var err error
 	var panicked bool
+	var terminated bool
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -56,6 +57,9 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 				if err != nil {
 					s.stats.AddFail()
 				}
+				if terminated {
+					err = ErrServerTerminated
+				}
 				msg.reply <- Response[O]{Value: output, Err: err}
 			}
 		}
@@ -63,6 +67,8 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 
 	if !s.terminated.Load() {
 		output, err = s.handler.Handle(msg)
+	} else {
+		terminated = true
 	}
 }
 
@@ -107,6 +113,7 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 		case <-ctx.Done():
 			s.stop()
 		case <-s.terminatedCh:
+			s.stop()
 			return
 		}
 	}()
