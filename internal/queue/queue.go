@@ -92,7 +92,23 @@ func (q *Queue[T]) Push(ctx context.Context, item T, dropNotifyCh chan error) er
 		return ErrFull
 	}
 
-	return q.policy.Enqueue(ctx, q, item)
+	return q.policy.Enqueue(ctx, q, item, dropNotifyCh)
+}
+
+func (q *Queue[T]) TryPush(item T, dropNotifyCh chan error) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.closed {
+		return ErrClosed
+	}
+
+	if !q.ring.Push(item) {
+		return ErrFull
+	}
+
+	q.signal()
+	return nil
 }
 
 func (q *Queue[T]) Pop() (T, bool) {
