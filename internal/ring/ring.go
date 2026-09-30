@@ -26,6 +26,11 @@ func NewRingBuffer[T any](initialCapacity int, maxCapacity int) *RingBuffer[T] {
 	if initialCapacity < 2 {
 		initialCapacity = 2
 	}
+
+	if maxCapacity > 0 && initialCapacity > maxCapacity {
+		initialCapacity = maxCapacity
+	}
+
 	return &RingBuffer[T]{
 		buf: make([]T, initialCapacity),
 		cap: maxCapacity,
