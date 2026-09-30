@@ -36,12 +36,19 @@ type Server[T ServerHandler[M, O], M any, O any] struct {
 	recover           func(ContextMessage[M, O], T, error, []byte) error
 }
 
-// NewServer returns a ready to run server. Importantly, in this state the server may hang forever on any messages sent.
-// Handling of deadlines and cancelations if only guaranteed after running Server.Run() [Server.Run()]. New Server accepts the user-defined handler and
-// server config [ServerConfig] as its agruments. It run the Validate() [ServerConfig.Validate()] methods on the passed config,
-// returning early with the errors and nil passed as the server pointer. NewServer is also responsible for running Init() on the handler. Upon encoutering an error
-// it returns that error and nil as the server pointer. NewSerevr initializes the queue that back the mailbox with setting retrived from ServerConfig.
-// It initializes the queue with a size of `1 + cfg.Worker`.
+// NewServer initializes a server. Importantly, in this state the server may
+// hang forever on any messages sent. Proper handling of deadlines and
+// cancelations is only guaranteed after calling Server.Run() [Server.Run()]
+//
+// New Server accepts the user-defined handler and a
+// server config [ServerConfig] as its agruments. It runs the Validate()
+// [ServerConfig.Validate()] methods on the passed config, returning early with
+// the error and nil passed as the server pointer. NewServer is also
+// responsible for running Init() and Run() on the handler. Upon encoutering an
+// error it returns that error and nil as the server pointer.
+// NewSerevr initializes the queue that backs the mailbox with settings
+// retrived from the ServerConfig. It initializes the queue with a size
+// of: `1 + cfg.Worker`.
 func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig, recover RecoverFn[T, M, O]) (*Server[T, M, O], error) {
 	err := cfg.Validate()
 	if err != nil {
