@@ -132,3 +132,156 @@ func FuzzQueue(f *testing.F) {
 		}
 	})
 }
+
+// Test concurrent popping and pushing to the queue
+func TestQueueConcurrentPushPop(t *testing.T) {
+	const (
+		PRODUCERS          = 32
+		ITEMS_PER_PRODUCER = 1000
+	)
+
+	q := NewQueue[int](16, 128, BlockPolicy[int]{})
+
+	var wg sync.WaitGroup
+	wg.Add(PRODUCERS)
+
+	for p := 0; p < PRODUCERS; p++ {
+		p := p
+		go func() {
+			defer wg.Done()
+
+			for i := 0; i < ITEMS_PER_PRODUCER; i++ {
+				v := p*ITEMS_PER_PRODUCER + i
+
+				if err := q.Push(t.Context(), v, mockch); err != nil {
+					t.Errorf("Push(%d): %v", v, err)
+					return
+				}
+			}
+		}()
+	}
+
+	seen := make(map[int]bool)
+	var mu sync.Mutex
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		expected := PRODUCERS * ITEMS_PER_PRODUCER
+
+		for len(seen) < expected {
+			v, ok := q.Pop()
+			if !ok {
+				runtime.Gosched()
+				continue
+			}
+
+			mu.Lock()
+			if seen[v] {
+				t.Errorf("value %d popped twice", v)
+			}
+			seen[v] = true
+			mu.Unlock()
+		}
+	}()
+
+	wg.Wait()
+	<-done
+
+	if len(seen) != PRODUCERS*ITEMS_PER_PRODUCER {
+		t.Fatalf("got %d items, expected %d",
+			len(seen), PRODUCERS*ITEMS_PER_PRODUCER)
+	}
+}
+
+// Test the queue's behaviour when unblocking multiples goroutines waiting to
+// push.
+func TestQueueConcurrentBlockedPushers(t *testing.T) {
+	const pushers = 100
+
+	q := NewQueue[int](2, 2, BlockPolicy[int]{})
+
+	if err := q.Push(t.Context(), 1, mockch); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.Push(t.Context(), 2, mockch); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(pushers)
+
+	errCh := make(chan error, pushers)
+
+	for i := 0; i < pushers; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			if err := q.Push(t.Context(), i+1000, mockch); err != nil {
+				errCh <- fmt.Errorf("pusher %d: %w", i, err)
+			}
+		}(i)
+	}
+
+	for popped := 0; popped < pushers; {
+		_, ok := q.Pop()
+		if !ok {
+			runtime.Gosched()
+			continue
+		}
+
+		popped++
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(errCh)
+
+		for err := range errCh {
+			t.Error(err)
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("blocked pushers did not all make progress")
+	}
+}
+
+// Test whether the queue is safe under two routines competing for either
+// sending or closing.
+func TestQueuePushCloseRace(t *testing.T) {
+	for iteration := 0; iteration < 1000; iteration++ {
+		q := NewQueue[int](2, 2, BlockPolicy[int]{})
+
+		start := make(chan struct{})
+
+		var wg sync.WaitGroup
+
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			<-start
+			_ = q.Push(t.Context(), 42, mockch)
+		}()
+
+		go func() {
+			defer wg.Done()
+			<-start
+			q.Close()
+		}()
+
+		close(start)
+		wg.Wait()
+
+		if !q.IsClosed() {
+			t.Fatal("queue should be closed")
+		}
+	}
+}
