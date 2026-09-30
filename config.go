@@ -32,7 +32,7 @@ const (
 	PolicyDropOldest                      // If the queue if full Send() or Call() will drop the oldest message (first in line) and the enqueue the just passed message. If a failure occurs ErrFull will be returned
 )
 
-func makePolicy[T any](mp MailboxPolicy) queue.MailboxPolicy[T] {
+func MakePolicy[T any](mp MailboxPolicy) queue.MailboxPolicy[T] {
 	switch mp {
 	case PolicyBlock:
 		return queue.BlockPolicy[T]{}
