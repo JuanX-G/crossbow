@@ -19,11 +19,11 @@ import (
 // Place a in the queue, return ErrServerTerminated if the server
 // is terminated. May return other errors if pushing fails depending
 // on the mailbox policy.
-func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
+func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O], dropCh chan error) error {
 	if s.terminated.Load() {
 		return ErrServerTerminated
 	}
-	if err := s.queue.Push(msg.Context, msg); err != nil {
+	if err := s.queue.Push(msg.Context, msg, dropCh); err != nil {
 		return err
 	}
 	return nil
