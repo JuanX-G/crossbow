@@ -16,11 +16,14 @@ import (
 	"time"
 )
 
+var mockch = make(chan error, 10000)
+
+// Test push-pop sequence correctness
 func TestPushPop(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 4, BlockPolicy[int]{})
-	q.Push(ctx, 1)
-	q.Push(ctx, 2)
+	q.Push(ctx, 1, mockch)
+	q.Push(ctx, 2, mockch)
 
 	v, ok := q.Pop()
 	if !ok {
@@ -34,7 +37,7 @@ func TestPushPop(t *testing.T) {
 func TestNotify(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 6, BlockPolicy[int]{})
-	q.Push(ctx, 42)
+	q.Push(ctx, 42, mockch)
 	select {
 	case <-q.Notify():
 	default:
@@ -45,7 +48,7 @@ func TestNotify(t *testing.T) {
 func TestClose(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 6, BlockPolicy[int]{})
-	q.Push(ctx, 42)
+	q.Push(ctx, 42, mockch)
 	<-q.Notify()
 	q.Close()
 	_, ok := <-q.Notify()
@@ -60,11 +63,11 @@ func TestClose(t *testing.T) {
 func TestBlockPolicy(t *testing.T) {
 	ctx := t.Context()
 	q := NewQueue(2, 2, BlockPolicy[int]{})
-	q.Push(ctx, 1)
-	q.Push(ctx, 2)
+	q.Push(ctx, 1, mockch)
+	q.Push(ctx, 2, mockch)
 	doneCh := make(chan struct{})
 	pushFn := func() {
-		q.Push(ctx, 3)
+		q.Push(ctx, 3, mockch)
 		doneCh <- struct{}{}
 	}
 	go pushFn()
@@ -99,7 +102,7 @@ func TestPolicies(t *testing.T) {
 	for policy, test := range tests {
 		q := NewQueue(2, 2, policy)
 		for _, v := range test.input {
-			q.Push(ctx, v)
+			q.Push(ctx, v, mockch)
 		}
 		for _, vs := range test.endState {
 			if vp, _ := q.Pop(); vp != vs {
@@ -113,7 +116,7 @@ func FuzzQueue(f *testing.F) {
 	q := NewQueue(1, 4, DropNewestPolicy[int]{})
 	f.Add(1)
 	f.Fuzz(func(t *testing.T, in int) {
-		err := q.Push(t.Context(), in)
+		err := q.Push(t.Context(), in, mockch)
 		if err != nil {
 			panic("1")
 		}
