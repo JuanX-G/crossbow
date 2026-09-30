@@ -1,18 +1,21 @@
 # Crossbow
-Is a simple actor-like, inbox based worker-pool. 
-It provides: lightweight lifecycle managment, panic recovery, adaptable mailbox policies and resizing, 
-synchronous and asynchronous communications with the server; optional handler level parallelism 
+
+Is a simple actor-like, inbox based worker-pool.
+It provides: lightweight lifecycle managment, panic recovery, adaptable mailbox policies and resizing,
+synchronous and asynchronous communications with the server; optional handler level parallelism
 and classic FIFO processing as default.
 
 Crossbow makes heavy use of generics to keep whole thing type safe. It is kept lean and lightweight on purpose.
-That is why it lacks a central registry, managers or process trees. 
+That is why it lacks a _central_ registry, managers or process trees.
 
 ## Toolchain
+
 Go 1.25 or later is required. The 'go.uber.org/goleak' package is used for tests built
 with `-tags=leaktest`, it is encouraged to run such test after making changes to the code base.
 This module requires 'go.uber.org/goleak' but, it is not neccesary for the library functions.
 
 ## Why Crossbow
+
 Crossbow offers actor-like stage managment in a lightweight and type-safe fashion;
 while at the same time extending it with an optional worker pool.
 
@@ -26,16 +29,19 @@ Crossbow allows you to limit the scope of every operation to an appropriate hand
 making your code for modular and safer.
 
 ## Versioning
+
 Crossbow follows SemVer. Backward compatibility will be assured from v1 onwards.
-We intends to use the standard go support cycle, each version of crossbow will be 
+We intends to use the standard go support cycle, each version of crossbow will be
 maintained for two version of the Go language.
 
 ## Usage
+
 All examples can be found in ./examples
 
-To use Crossbow you need to define a handler that implements the ServerHandler[M any, O any] interface. 
+To use Crossbow you need to define a handler that implements the ServerHandler[M any, O any] interface.
 Most importantly you need to have a Handle(ContextMessage[M, O]) method, this is the handling loop of your server;
 any data sent ot it is popped from the inbox and passed to it.
+
 ```go
 (...)
 
@@ -82,5 +88,32 @@ func main() {
     out, err := srv.Call(rqCtx, 11)
     // Output will be 0; err will be nil; and the string "21:37" will be printed
 }
-    
+
 ```
+
+## Additional modules
+
+### Registry
+
+While crossbow purposefully omits a central registry, it does a have a
+lightweight version of such. Crossbow's registry is moreso a simple, keyed
+store of servers that share the same interface. Each server must accept the
+same message, and output the same response.
+The registry uses a generic type for its key type. It allows broadcasting to
+all members. It is threadsafe for registrations, deletes, lookups, calls and
+sends. It manages cancelation by registering each server with its respective
+cancel function as one entry.
+The registry can be useful to for example group logging-servers which have
+different logging tergets but the same interface. It allows simpler and more
+modular code.
+
+### Event stream
+
+The event stream is a lightweight event bus-system, based on the pub-sub model.
+Anyone can obtain a subscription to an event source, a subscription has its own
+mailbox and cancelation tracking. There is only one publishing handle, but it
+may be shared, yet that is opaque to the subscriptions. Subscriptions can also
+notify of the event source being closed.
+
+Subscriptions can signal when an event arrives. A blocking, context aware, read
+is provided. Along with a non blocking one.
