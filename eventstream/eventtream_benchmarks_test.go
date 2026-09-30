@@ -1,16 +1,16 @@
 package eventstream
 
 import (
-	"testing"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
 	"github.com/JuanX-G/crossbow"
 )
 
 func BenchmarkPublishConsume(b *testing.B) {
-	strm := NewEventStream[int](1024)
+	strm := NewEventStream[int](10, 0, 1024)
 
 	sub, err := strm.Subscribe(crossbow.PolicyDropNewest)
 	if err != nil {
@@ -43,12 +43,12 @@ func BenchmarkPublishConsume(b *testing.B) {
 	}
 
 	b.StopTimer()
-	sub.Close()
+	sub.Close(nil)
 	<-done
 }
 
 func BenchmarkConcurrentPublish(b *testing.B) {
-	strm := NewEventStream[int](1024)
+	strm := NewEventStream[int](10, 0, 1024)
 
 	sub, err := strm.Subscribe(crossbow.PolicyDropNewest)
 	if err != nil {
@@ -67,7 +67,7 @@ func BenchmarkConcurrentPublish(b *testing.B) {
 			if sub.Canceled() {
 				return
 			}
-			_, ok := <- done
+			_, ok := <-done
 			if ok {
 				break
 			}
@@ -81,18 +81,17 @@ func BenchmarkConcurrentPublish(b *testing.B) {
 	})
 
 	b.StopTimer()
-	sub.Close()
+	sub.Close(nil)
 
 	done <- struct{}{}
 }
 
-
-const TEST_FAST_PUBLISHING_SUB_COUNT = 128^2
+const TEST_FAST_PUBLISHING_SUB_COUNT = 128 ^ 2
 const TEST_FAST_PUBLISHING_PUB_COUNT = 128 * 64
 const TEST_FAST_PUBLISHING_EVENT_COUNT = 4096 * 16
 
 func BenchmarkEventStreamFastPublishing(t *testing.B) {
-	strm := NewEventStream[int](1)
+	strm := NewEventStream[int](5, 0, 4)
 
 	subs := make([]*Subscription[int], 0, TEST_FAST_PUBLISHING_SUB_COUNT)
 
@@ -112,12 +111,12 @@ func BenchmarkEventStreamFastPublishing(t *testing.B) {
 			t.Fatalf("expected `err == nil` for subscribing, found: %+v", err)
 		}
 
-		go func () {
+		go func() {
 			for done.Load() {
 				ev, _ := sub.Recieve(t.Context())
 				arrived.Store(ev, struct{}{})
 			}
-		} ()
+		}()
 		subs = append(subs, sub)
 	}
 
@@ -132,16 +131,16 @@ func BenchmarkEventStreamFastPublishing(t *testing.B) {
 			go func() {
 				num.Add(1)
 				strm.Publish(t.Context(), int(num.Load()))
-				defer func () {<-tokens}()
+				defer func() { <-tokens }()
 			}()
 		}
 		doneCh <- struct{}{}
 	}()
 
 	select {
-	case <- t.Context().Done():
+	case <-t.Context().Done():
 		break
-	case <- doneCh:
+	case <-doneCh:
 		time.Sleep(1000 * time.Millisecond)
 	}
 
@@ -152,6 +151,6 @@ func BenchmarkEventStreamFastPublishing(t *testing.B) {
 			notFoundCount++
 		}
 	}
-	t.Logf("expected for: %d messages to arrive, found: %d", TEST_FAST_PUBLISHING_EVENT_COUNT, TEST_FAST_PUBLISHING_EVENT_COUNT - notFoundCount)
+	t.Logf("expected for: %d messages to arrive, found: %d", TEST_FAST_PUBLISHING_EVENT_COUNT, TEST_FAST_PUBLISHING_EVENT_COUNT-notFoundCount)
 	t.Logf("%f percent have not arrived", float64(notFoundCount)/float64(TEST_FAST_PUBLISHING_EVENT_COUNT))
 }

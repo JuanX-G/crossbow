@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewEventStream(t *testing.T) {
-	strm := NewEventStream[int](6)
+	strm := NewEventStream[int](5, 0, 6)
 	if strm.defaultMailboxCap != 6 {
 		t.Fatalf("expected mailbox cap 6, found: %d", strm.defaultMailboxCap)
 	}
@@ -16,7 +16,7 @@ func TestNewEventStream(t *testing.T) {
 const TEST_PUBLISH_EVENT = 42
 
 func TestEventStreamPublish(t *testing.T) {
-	strm := NewEventStream[int](4)
+	strm := NewEventStream[int](5, 0, 4)
 
 	sub, err := strm.Subscribe(crossbow.PolicyDropNewest)
 	if err != nil {
@@ -37,7 +37,7 @@ func TestEventStreamPublish(t *testing.T) {
 const TEST_MULTIPLE_SUBSCRIPTIONS_COUNT = 8
 
 func TestEventStreamMultipleSubscriptions(t *testing.T) {
-	strm := NewEventStream[int](4)
+	strm := NewEventStream[int](5, 0, 4)
 
 	subs := make([]*Subscription[int], 0, 8)
 
