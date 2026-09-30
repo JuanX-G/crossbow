@@ -76,7 +76,7 @@ func (q *Queue[T]) wakeWaiters() {
 	q.notFullCh = make(chan struct{})
 }
 
-func (q *Queue[T]) Push(ctx context.Context, item T) error {
+func (q *Queue[T]) Push(ctx context.Context, item T, dropNotifyCh chan error) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

@@ -15,10 +15,10 @@ func TestQueueBlockedPushCancellation(t *testing.T) {
 
 	ctx := t.Context()
 
-	if err := q.Push(ctx, 1); err != nil {
+	if err := q.Push(ctx, 1, mockch); err != nil {
 		t.Fatal(err)
 	}
-	if err := q.Push(ctx, 2); err != nil {
+	if err := q.Push(ctx, 2, mockch); err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,7 +27,7 @@ func TestQueueBlockedPushCancellation(t *testing.T) {
 	done := make(chan error, 1)
 
 	go func() {
-		done <- q.Push(ctx, 3)
+		done <- q.Push(ctx, 3, mockch)
 	}()
 
 	// Make sure the goroutine actually gets a chance to block.
