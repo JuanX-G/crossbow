@@ -30,7 +30,7 @@ func (s *Server[T, M, O]) Send(ctx context.Context, req M) error {
 
 	msg := newContextMessage[M, O](ctx, req, nil, s.generateTimestamp)
 
-	if err := s.enqueue(msg); err != nil {
+	if err := s.enqueue(msg, make(chan error)); err != nil {
 		return fmt.Errorf("queue error: %w", err)
 	}
 	return nil
@@ -50,7 +50,8 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 	resCh := s.replyPool.Get().(chan Response[O])
 	msg := newContextMessage(ctx, req, resCh, s.generateTimestamp)
 
-	if err := s.enqueue(msg); err != nil {
+	dropCh := make(chan error)
+	if err := s.enqueue(msg, dropCh); err != nil {
 		s.replyPool.Put(resCh)
 		return zero, fmt.Errorf("queue error: %w", err)
 	}
@@ -58,9 +59,14 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 	select {
 	case <-ctx.Done():
 		return zero, ctx.Err()
+
 	case res := <-resCh:
 		s.replyPool.Put(resCh)
 		return res.Value, res.Err
+
+	case err := <-dropCh:
+		s.replyPool.Put(resCh)
+		return zero, err
 	}
 }
 
