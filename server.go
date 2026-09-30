@@ -63,7 +63,7 @@ func NewServer[T ServerHandler[M, O], M any, O any](handler T, cfg ServerConfig,
 	}
 
 	srv := &Server[T, M, O]{
-		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), makePolicy[ContextMessage[M, O]](cfg.Policy)),
+		queue:             queue.NewQueue(1+int(cfg.Workers), int(cfg.MailboxSize), MakePolicy[ContextMessage[M, O]](cfg.Policy)),
 		handler:           handler,
 		workers:           cfg.Workers,
 		recover:           recover,
