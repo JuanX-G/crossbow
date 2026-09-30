@@ -119,7 +119,7 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 	}()
 }
 
-// call shutdown. Drain enqueue messages and waits for remaining processing to finish.
+// Calls shutdown. Drain enqueue messages and waits for remaining processing to finish.
 func (s *Server[T, M, O]) stop() {
 	s.shutdown(nil)
 	s.drainRemaining()
