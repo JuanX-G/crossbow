@@ -31,7 +31,7 @@ func TestPushPop(t *testing.T) {
 func TestResize(t *testing.T) {
 	r := NewRingBuffer[int](2, 0)
 	for i := range 1000 {
-		r.Push(i)
+		_ = r.Push(i)
 	}
 
 	for i := range 1000 {
