@@ -24,9 +24,10 @@ type ServerHandler[M any, O any] interface {
 // a full queue. The last argument is the item being pushed, the second
 // one the the queue object [crossbow/internal/queue]. The first argument is the
 // context passed by the caller, you do not need to handle it in any
-// special way. Return an apropriate error if the pushing fails,
-// if so, you generally should not modify the underlying queues content so as
-// to not confuse callers.
+// special way. Return an apropriate error if the pushing fails.
+//
+// If returning an error, you generally should not modify the underlying
+// queues content so as to not confuse callers.
 type CustomMailboxPolicy[T any] interface {
-	queue.MailboxPolicy[T] // required function: ` Enqueue(context.Context, *Queue[T], T) error `
+	queue.MailboxPolicy[T] // required function: ` Enqueue(context.Context, *Queue[T], T, chan error) error `
 }
