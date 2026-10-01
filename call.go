@@ -50,7 +50,9 @@ func (s *Server[T, M, O]) Call(ctx context.Context, req M) (O, error) {
 	resCh := s.replyPool.Get().(chan Response[O])
 	msg := newContextMessage(ctx, req, resCh, s.generateTimestamp)
 
-	dropCh := make(chan error)
+	dropCh, dropChPut := s.queue.GetDropCh()
+	defer dropChPut()
+
 	if err := s.enqueue(msg, dropCh); err != nil {
 		s.replyPool.Put(resCh)
 		return zero, fmt.Errorf("queue error: %w", err)
