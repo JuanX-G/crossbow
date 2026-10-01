@@ -18,7 +18,7 @@ type Subscription[E any] struct {
 
 func NewSubscription[E any](maxCap int, policy crossbow.MailboxPolicy) (*Subscription[E], error) {
 	if maxCap < 1 {
-		return nil, ErrEventStreamClosed // TODO: fix
+		maxCap = 2
 	}
 
 	cap := (maxCap + 1) / 2
