@@ -24,7 +24,7 @@ func (BlockPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dropCh c
 			return ErrClosed
 		}
 
-		if q.ring.Push(item) {
+		if q.ring.Push(WrapInItemData(item, dropCh)) {
 			q.signal()
 			return nil
 		}
@@ -42,7 +42,7 @@ func (DropNewestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dro
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
+	if !q.ring.Push(WrapInItemData(item, dropCh)) {
 		if dropCh != nil {
 			dropCh <- ErrDropped
 		}
@@ -61,16 +61,17 @@ func (DropOldestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dro
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
-		_, ok := q.ring.Pop()
+	data := WrapInItemData(item, dropCh)
+	if !q.ring.Push(data) {
+		popped, ok := q.ring.Pop()
 		if !ok {
 			return ErrFull
 		}
-		if dropCh != nil {
-			// FIXME FFS: dropCh <- ErrDropped
+		if popped.dropCh != nil {
+			popped.dropCh <- ErrDropped
 		}
 
-		if !q.ring.Push(item) {
+		if !q.ring.Push(data) {
 			return ErrFull
 		}
 	}
@@ -86,7 +87,7 @@ func (UnboundedPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, drop
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
+	if !q.ring.Push(WrapInItemData(item, dropCh)) {
 		return ErrFull
 	}
 

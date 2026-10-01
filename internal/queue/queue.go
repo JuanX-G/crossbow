@@ -40,7 +40,7 @@ func NewQueue[T any](initialCap int, maxCap int, policy MailboxPolicy[T]) *Queue
 		initialCap = 2
 	}
 	q := &Queue[T]{
-		ring:      ring.NewRingBuffer[T](initialCap, maxCap),
+		ring:      ring.NewRingBuffer[itemData[T]](initialCap, maxCap),
 		notify:    make(chan struct{}, 1),
 		notFullCh: make(chan struct{}),
 		policy:    policy,
@@ -99,7 +99,7 @@ func (q *Queue[T]) TryPush(item T, dropNotifyCh chan error) error {
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
+	if !q.ring.Push(itemData[T]{item: item, dropCh: dropNotifyCh}) {
 		return ErrFull
 	}
 
@@ -113,11 +113,11 @@ func (q *Queue[T]) Pop() (T, bool) {
 
 	item, ok := q.ring.Pop()
 	if !ok {
-		return item, false
+		return item.item, false
 	}
 
 	q.wakeWaiters()
-	return item, true
+	return item.item, true
 }
 
 func (q *Queue[T]) Len() int {
