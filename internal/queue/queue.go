@@ -91,6 +91,7 @@ func (q *Queue[T]) Push(ctx context.Context, item T, dropNotifyCh chan error) er
 	return q.policy.Enqueue(ctx, q, item, dropNotifyCh)
 }
 
+// A quick push that ignores the policy if the queue is not full.
 func (q *Queue[T]) TryPush(item T, dropNotifyCh chan error) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
