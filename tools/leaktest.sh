@@ -18,7 +18,12 @@ fail() {
     echo "[!!]: $test failed"
 }
 
-for test in $(go test -list . | grep -E "^(Test|Example)"); do ./tests -test.run "^$test\$" &>/dev/null && echo -e "$test passed." || (fail $test); done
+for test in $(go test -list . | grep -E "^(Test|Example)"); do
+    ./tests -test.run "^$test\$" &>/dev/null || (fail "$test");
+    if [ $failed -eq 1 ]; then
+        echo -e "test: $test passed\n"
+    fi
+done
 
 if [ $failed -eq 1 ]; then
     echo "FAIL"

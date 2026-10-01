@@ -12,15 +12,19 @@ package queue
 
 import "context"
 
+type MailboxPolicy[T any] interface {
+	Enqueue(context.Context, *Queue[T], T, chan error) error
+}
+
 type BlockPolicy[T any] struct{}
 
-func (BlockPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
+func (BlockPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dropCh chan error) error {
 	for {
 		if q.closed {
 			return ErrClosed
 		}
 
-		if q.ring.Push(item) {
+		if q.ring.Push(WrapInItemData(item, dropCh)) {
 			q.signal()
 			return nil
 		}
@@ -33,12 +37,15 @@ func (BlockPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
 
 type DropNewestPolicy[T any] struct{}
 
-func (DropNewestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
+func (DropNewestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dropCh chan error) error {
 	if q.closed {
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
+	if !q.ring.Push(WrapInItemData(item, dropCh)) {
+		if dropCh != nil {
+			dropCh <- ErrDropped
+		}
 		return ErrDropped
 	}
 
@@ -49,18 +56,22 @@ func (DropNewestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) err
 
 type DropOldestPolicy[T any] struct{}
 
-func (DropOldestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
+func (DropOldestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dropCh chan error) error {
 	if q.closed {
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
-		_, ok := q.ring.Pop()
+	data := WrapInItemData(item, dropCh)
+	if !q.ring.Push(data) {
+		popped, ok := q.ring.Pop()
 		if !ok {
 			return ErrFull
 		}
+		if popped.dropCh != nil {
+			popped.dropCh <- ErrDropped
+		}
 
-		if !q.ring.Push(item) {
+		if !q.ring.Push(data) {
 			return ErrFull
 		}
 	}
@@ -71,12 +82,12 @@ func (DropOldestPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) err
 
 type UnboundedPolicy[T any] struct{}
 
-func (UnboundedPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T) error {
+func (UnboundedPolicy[T]) Enqueue(ctx context.Context, q *Queue[T], item T, dropCh chan error) error {
 	if q.closed {
 		return ErrClosed
 	}
 
-	if !q.ring.Push(item) {
+	if !q.ring.Push(WrapInItemData(item, dropCh)) {
 		return ErrFull
 	}
 

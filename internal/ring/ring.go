@@ -18,16 +18,30 @@ type RingBuffer[T any] struct {
 	count int
 }
 
+// Allocates a new RingBuffer. Defaults
+// - If max capacity is less than 2 it defaults to 2.
+// - If initialCapacity is less than 2 it defaults to 2.
+// - If initialCapacity is above maxCapacity is it set to maxCapacity.
 func NewRingBuffer[T any](initialCapacity int, maxCapacity int) *RingBuffer[T] {
 	if initialCapacity < 2 {
 		initialCapacity = 2
 	}
+
+	if maxCapacity > 0 && initialCapacity > maxCapacity {
+		initialCapacity = maxCapacity
+	}
+
 	return &RingBuffer[T]{
 		buf: make([]T, initialCapacity),
 		cap: maxCapacity,
 	}
 }
 
+// Pushes an element to the end of the buffer. Returns false if the push
+// fails. A push can fail most notably because of the buffer hitting its cap.
+// Push automatically doubles the buffer size if the cap allows so, if the new
+// buffer size would overrun the cap, but there is still space below the cap,
+// the buffer is grown to fill all that space.
 func (r *RingBuffer[T]) Push(item T) bool {
 	if r.count == len(r.buf) {
 		newSize := len(r.buf) * 2
@@ -47,6 +61,12 @@ func (r *RingBuffer[T]) Push(item T) bool {
 	return true
 }
 
+// Removes the next element of the buffer. Returns false if the element
+// is missing, true if it's found. If flase is returned, the element will the
+// zero value of T.
+// Automatically halves the buffer size if the element count falls below
+// 25% of the buffer size. As calculated by the following code:
+// len(r.buf)/4.
 func (r *RingBuffer[T]) Pop() (T, bool) {
 	var zero T
 	if r.count == 0 {
@@ -65,6 +85,8 @@ func (r *RingBuffer[T]) Pop() (T, bool) {
 	return item, true
 }
 
+// resize unwraps the buffer and copies it into a buffer of size newCapacity.
+// It then swaps internal buffer pointer, sets head and tail.
 func (r *RingBuffer[T]) resize(newCapacity int) {
 	newBuf := make([]T, newCapacity)
 
@@ -83,6 +105,7 @@ func (r *RingBuffer[T]) resize(newCapacity int) {
 	r.tail = r.count
 }
 
+// Returns the current count of elements in the buffer.
 func (r *RingBuffer[T]) Len() int {
 	return r.count
 }

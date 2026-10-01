@@ -19,11 +19,11 @@ import (
 // Place a in the queue, return ErrServerTerminated if the server
 // is terminated. May return other errors if pushing fails depending
 // on the mailbox policy.
-func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O]) error {
+func (s *Server[T, M, O]) enqueue(msg ContextMessage[M, O], dropCh chan error) error {
 	if s.terminated.Load() {
 		return ErrServerTerminated
 	}
-	if err := s.queue.Push(msg.Context, msg); err != nil {
+	if err := s.queue.Push(msg.Context, msg, dropCh); err != nil {
 		return err
 	}
 	return nil
@@ -37,6 +37,7 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 	var output O
 	var err error
 	var panicked bool
+	var terminated bool
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -56,6 +57,9 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 				if err != nil {
 					s.stats.AddFail()
 				}
+				if terminated {
+					err = ErrServerTerminated
+				}
 				msg.reply <- Response[O]{Value: output, Err: err}
 			}
 		}
@@ -63,6 +67,8 @@ func (s *Server[T, M, O]) dispatch(msg ContextMessage[M, O]) {
 
 	if !s.terminated.Load() {
 		output, err = s.handler.Handle(msg)
+	} else {
+		terminated = true
 	}
 }
 
@@ -107,12 +113,13 @@ func (s *Server[T, M, O]) Run(ctx context.Context) {
 		case <-ctx.Done():
 			s.stop()
 		case <-s.terminatedCh:
+			s.stop()
 			return
 		}
 	}()
 }
 
-// call shutdown. Drain enqueue messages and waits for remaining processing to finish.
+// Calls shutdown. Drain enqueue messages and waits for remaining processing to finish.
 func (s *Server[T, M, O]) stop() {
 	s.shutdown(nil)
 	s.drainRemaining()

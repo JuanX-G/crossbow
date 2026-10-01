@@ -12,29 +12,19 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/JuanX-G/crossbow/internal/ring"
 )
 
-var (
-	ErrClosed  = errors.New("queue is closed")
-	ErrFull    = errors.New("queue is full")
-	ErrDropped = errors.New("message dropped")
-)
-
-type MailboxPolicy[T any] interface {
-	Enqueue(context.Context, *Queue[T], T) error
-}
-
 type Queue[T any] struct {
 	mu sync.Mutex
 
-	ring      *ring.RingBuffer[T]
-	notify    chan struct{}
-	notFullCh chan struct{} // closed and replaced any time space might have freed up; lets waiters select on it alongside ctx.Done()
-	closed    bool
+	ring       *ring.RingBuffer[itemData[T]]
+	notify     chan struct{}
+	notFullCh  chan struct{} // closed and replaced any time space might have freed up; lets waiters select on it alongside ctx.Done()
+	closed     bool
+	dropchPool sync.Pool // Pool of drop notification channels to reduce allocation cost for pushing items
 
 	policy MailboxPolicy[T]
 }
@@ -44,13 +34,27 @@ func NewQueue[T any](initialCap int, maxCap int, policy MailboxPolicy[T]) *Queue
 		initialCap = 2
 	}
 	q := &Queue[T]{
-		ring:      ring.NewRingBuffer[T](initialCap, maxCap),
+		ring:      ring.NewRingBuffer[itemData[T]](initialCap, maxCap),
 		notify:    make(chan struct{}, 1),
 		notFullCh: make(chan struct{}),
 		policy:    policy,
+		dropchPool: sync.Pool{
+			New: func() any {
+				return make(chan error, 1)
+			},
+		},
 	}
 
 	return q
+}
+
+// Get a drop channel from a shared pool, return it by calling the function
+// returned as the second return value.
+func (q *Queue[T]) GetDropCh() (chan error, func()) {
+	ch := q.dropchPool.Get()
+	return ch.(chan error), func() {
+		q.dropchPool.Put(ch)
+	}
 }
 
 // waitForSpace blocks until either space might be available (notFullCh fires),
@@ -76,7 +80,7 @@ func (q *Queue[T]) wakeWaiters() {
 	q.notFullCh = make(chan struct{})
 }
 
-func (q *Queue[T]) Push(ctx context.Context, item T) error {
+func (q *Queue[T]) Push(ctx context.Context, item T, dropNotifyCh chan error) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -92,7 +96,24 @@ func (q *Queue[T]) Push(ctx context.Context, item T) error {
 		return ErrFull
 	}
 
-	return q.policy.Enqueue(ctx, q, item)
+	return q.policy.Enqueue(ctx, q, item, dropNotifyCh)
+}
+
+// A quick push that ignores the policy if the queue is not full.
+func (q *Queue[T]) TryPush(item T, dropNotifyCh chan error) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.closed {
+		return ErrClosed
+	}
+
+	if !q.ring.Push(itemData[T]{item: item, dropCh: dropNotifyCh}) {
+		return ErrFull
+	}
+
+	q.signal()
+	return nil
 }
 
 func (q *Queue[T]) Pop() (T, bool) {
@@ -101,11 +122,11 @@ func (q *Queue[T]) Pop() (T, bool) {
 
 	item, ok := q.ring.Pop()
 	if !ok {
-		return item, false
+		return item.item, false
 	}
 
 	q.wakeWaiters()
-	return item, true
+	return item.item, true
 }
 
 func (q *Queue[T]) Len() int {
