@@ -12,16 +12,9 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/JuanX-G/crossbow/internal/ring"
-)
-
-var (
-	ErrClosed  = errors.New("queue is closed")
-	ErrFull    = errors.New("queue is full")
-	ErrDropped = errors.New("message dropped")
 )
 
 type Queue[T any] struct {
