@@ -30,7 +30,7 @@ func (s *Server[T, M, O]) Send(ctx context.Context, req M) error {
 
 	msg := newContextMessage[M, O](ctx, req, nil, s.generateTimestamp)
 
-	if err := s.enqueue(msg, make(chan error)); err != nil {
+	if err := s.enqueue(msg, nil); err != nil {
 		return fmt.Errorf("queue error: %w", err)
 	}
 	return nil
